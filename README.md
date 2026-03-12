@@ -11,24 +11,3 @@
 |----------|---------------|---------------|
 | 🪟 Windows | [**Download .exe**](https://github.com/dertwist/VsmartEditor2/releases/latest) | [Latest build ↗](https://github.com/dertwist/VsmartEditor2/releases/tag/latest-build) |
 | 🍎 macOS | [**Download .dmg**](https://github.com/dertwist/VsmartEditor2/releases/latest) | [Latest build ↗](https://github.com/dertwist/VsmartEditor2/releases/tag/latest-build) |
-
-> All releases: [github.com/dertwist/VsmartEditor2/releases](https://github.com/dertwist/VsmartEditor2/releases)
-
-## Getting Started
-
-```bash
-npm install
-npm start
-```
-
-## Build locally
-
-```bash
-# Windows
-npm run build:win
-
-# macOS
-npm run build:mac
-```
-
-Built files are output to the `dist/` folder.
