@@ -7,7 +7,10 @@ let doc = {
 let nextElementId = 1;
 let selectedNodePath = null; // path like "children.0.m_Modifiers.1"
 let undoStack = [], redoStack = [], maxUndo = 50;
+let sliderDragging = false, sliderDragUndoPushed = false;
 let expandedNodes = new Set(['root','children','variables']);
+let showModifiersInTree = true;
+let showSelectionCriteriaInTree = true;
 let clipboard = null;
 
 // ===== ELEMENT/OPERATOR/FILTER DEFINITIONS =====
@@ -183,23 +186,84 @@ function recalcAllIds() {
 }
 
 // ===== UNDO/REDO =====
-function pushUndo() {
-  undoStack.push(JSON.stringify(doc));
+function captureEditorState() {
+  return JSON.stringify({
+    doc,
+    selectedNodePath,
+    expandedNodes: Array.from(expandedNodes)
+  });
+}
+
+// Apply a snapshot without triggering a full render (used for bulk jumps).
+function applyState(snapshot) {
+  const state = JSON.parse(snapshot);
+  if (state && state.doc) {
+    doc = state.doc;
+    selectedNodePath = state.selectedNodePath || null;
+    expandedNodes = new Set(state.expandedNodes || ['root', 'children', 'variables']);
+  } else {
+    doc = state;
+    selectedNodePath = null;
+    expandedNodes = new Set(['root', 'children', 'variables']);
+  }
+  recalcAllIds();
+  if (selectedNodePath && !resolveNode(selectedNodePath)) selectedNodePath = null;
+}
+
+function restoreEditorState(snapshot) {
+  applyState(snapshot);
+  renderAll();
+}
+
+// Each stack entry: { snapshot: string, label: string }
+function pushUndo(label = 'Edit') {
+  // During a slider drag, only record the state at the very start of the drag.
+  if (sliderDragging) {
+    if (sliderDragUndoPushed) return;
+    sliderDragUndoPushed = true;
+    label = 'Edit Property';
+  }
+  undoStack.push({ snapshot: captureEditorState(), label });
   if (undoStack.length > maxUndo) undoStack.shift();
   redoStack = [];
 }
 function undo() {
   if (!undoStack.length) return;
-  redoStack.push(JSON.stringify(doc));
-  doc = JSON.parse(undoStack.pop());
-  recalcAllIds();
+  const entry = undoStack.pop();
+  redoStack.push({ snapshot: captureEditorState(), label: entry.label });
+  applyState(entry.snapshot);
   renderAll();
 }
 function redo() {
   if (!redoStack.length) return;
-  undoStack.push(JSON.stringify(doc));
-  doc = JSON.parse(redoStack.pop());
-  recalcAllIds();
+  const entry = redoStack.pop();
+  undoStack.push({ snapshot: captureEditorState(), label: entry.label });
+  applyState(entry.snapshot);
+  renderAll();
+}
+
+// Jump directly to any position in history without repeated full renders.
+// index = 0 → oldest undo state; index = undoStack.length → current state.
+function jumpToHistoryState(targetIndex) {
+  const currentIndex = undoStack.length;
+  if (targetIndex === currentIndex) return;
+  if (targetIndex < currentIndex) {
+    const steps = currentIndex - targetIndex;
+    for (let i = 0; i < steps; i++) {
+      if (!undoStack.length) break;
+      const entry = undoStack.pop();
+      redoStack.push({ snapshot: captureEditorState(), label: entry.label });
+      applyState(entry.snapshot);
+    }
+  } else {
+    const steps = targetIndex - currentIndex;
+    for (let i = 0; i < steps; i++) {
+      if (!redoStack.length) break;
+      const entry = redoStack.pop();
+      undoStack.push({ snapshot: captureEditorState(), label: entry.label });
+      applyState(entry.snapshot);
+    }
+  }
   renderAll();
 }
 
@@ -282,12 +346,50 @@ function getDefaultForVarType(t) {
   return '';
 }
 
+// ===== UNDO HISTORY PANEL =====
+function renderUndoHistory() {
+  const list = document.getElementById('undoHistoryList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  // Build the full timeline: [oldest undo ... newest undo] [current] [oldest redo ... newest redo]
+  // undoStack[0] = oldest pre-action state, undoStack[N-1] = most recent pre-action state
+  // We show entries newest-first (current at top).
+  const currentIndex = undoStack.length; // position of "current" in the flattened list
+
+  function makeEntry(label, index, isCurrent, isRedo) {
+    const el = document.createElement('div');
+    el.className = 'history-entry' + (isCurrent ? ' history-current' : '') + (isRedo ? ' history-redo' : '');
+    const icon = isCurrent ? '▶' : (isRedo ? '↷' : '↩');
+    el.innerHTML = `<span class="history-icon">${icon}</span><span class="history-label">${escHtml(label)}</span>`;
+    if (!isCurrent) {
+      el.title = isRedo ? 'Redo to this state' : 'Undo to this state';
+      el.addEventListener('click', () => jumpToHistoryState(index));
+    }
+    return el;
+  }
+
+  // Redo entries (above current, newest redo at top = redoStack[0])
+  for (let i = 0; i < redoStack.length; i++) {
+    list.appendChild(makeEntry(redoStack[i].label, currentIndex + (redoStack.length - i), false, true));
+  }
+
+  // Current state
+  list.appendChild(makeEntry('Current', currentIndex, true, false));
+
+  // Undo entries (below current, most recent undo first = undoStack[N-1])
+  for (let i = undoStack.length - 1; i >= 0; i--) {
+    list.appendChild(makeEntry(undoStack[i].label, i, false, false));
+  }
+}
+
 // ===== TREE RENDERING =====
 function renderAll() {
   renderTree();
   renderProperties();
   updatePreview();
   updateStatus();
+  renderUndoHistory();
 }
 
 function renderTree() {
@@ -339,9 +441,9 @@ function createTreeSection(id, icon, label, count) {
 function renderTreeNode(container, node, path, depth) {
   const shortClass = getShortClass(node._class);
   const hasChildren = node.m_Children && node.m_Children.length > 0;
-  const hasMods = node.m_Modifiers && node.m_Modifiers.length > 0;
-  const hasCriteria = node.m_SelectionCriteria && node.m_SelectionCriteria.length > 0;
-  const hasSubItems = hasChildren || hasMods || hasCriteria || (node.m_Children !== undefined);
+  const hasMods = showModifiersInTree && node.m_Modifiers && node.m_Modifiers.length > 0;
+  const hasCriteria = showSelectionCriteriaInTree && node.m_SelectionCriteria && node.m_SelectionCriteria.length > 0;
+  const hasSubItems = hasChildren || hasMods || hasCriteria || (node.m_Children !== undefined) || (showModifiersInTree && node.m_Modifiers !== undefined) || (showSelectionCriteriaInTree && node.m_SelectionCriteria !== undefined);
   const expanded = expandedNodes.has(path);
   const label = node.m_sLabel || shortClass;
   const icon = getElementIcon(shortClass);
@@ -363,7 +465,7 @@ function renderTreeNode(container, node, path, depth) {
 
   if (expanded) {
     // Modifiers
-    if (node.m_Modifiers) {
+    if (showModifiersInTree && node.m_Modifiers) {
       if (node.m_Modifiers.length > 0 || true) { // always show section
         const modSectionId = path + '.m_Modifiers';
         const modExpanded = expandedNodes.has(modSectionId);
@@ -395,7 +497,7 @@ function renderTreeNode(container, node, path, depth) {
       }
     }
     // Selection Criteria
-    if (node.m_SelectionCriteria) {
+    if (showSelectionCriteriaInTree && node.m_SelectionCriteria) {
       const scSectionId = path + '.m_SelectionCriteria';
       const scExpanded = expandedNodes.has(scSectionId);
       const scRow = document.createElement('div');
@@ -442,6 +544,17 @@ function toggleExpand(id) {
 }
 
 function collapseAllTree() { expandedNodes.clear(); expandedNodes.add('children'); expandedNodes.add('variables'); renderTree(); }
+
+function toggleShowModifiers() {
+  showModifiersInTree = !showModifiersInTree;
+  document.getElementById('btnToggleModifiers').classList.toggle('active', showModifiersInTree);
+  renderTree();
+}
+function toggleShowCriteria() {
+  showSelectionCriteriaInTree = !showSelectionCriteriaInTree;
+  document.getElementById('btnToggleCriteria').classList.toggle('active', showSelectionCriteriaInTree);
+  renderTree();
+}
 function expandAllTree() {
   expandedNodes.add('children'); expandedNodes.add('variables');
   function expandAll(node, path) {
@@ -509,7 +622,7 @@ function performDrop(srcPath, dstPath, position) {
   // Only allow reorder within same parent array, or reparent into a compatible container
   const srcParent = resolveParentArray(srcPath);
   if (!srcParent) return;
-  pushUndo();
+  pushUndo('Move (Drag)');
   const node = deepClone(srcParent.arr[srcParent.idx]);
   srcParent.arr.splice(srcParent.idx, 1);
 
@@ -577,7 +690,7 @@ function showElementContextMenu(e, path) {
   const canHaveChildren = node.m_Children !== undefined;
   const items = [];
   if (canHaveChildren) {
-    items.push({ label: '➕ Add Child Element...', action: () => showElementPicker(e.clientX, e.clientY, (typeName) => { pushUndo(); node.m_Children.push(createElement(typeName)); expandedNodes.add(path); renderAll(); }) });
+    items.push({ label: '➕ Add Child Element...', action: () => showElementPicker(e.clientX, e.clientY, (typeName) => { pushUndo('Add Element'); node.m_Children.push(createElement(typeName)); expandedNodes.add(path); renderAll(); }) });
   }
   items.push({ label: '⚙️ Add Modifier...', action: () => showOperatorPicker(e.clientX, e.clientY, path) });
   items.push({ label: '🎯 Add Selection Criteria...', action: () => showCriteriaPicker(e.clientX, e.clientY, path) });
@@ -625,12 +738,12 @@ function showAddModifierMenu(e, parentPath) {
   const items = [
     { header: 'Add Modifier' },
     ...Object.keys(OPERATOR_DEFS).map(name => ({
-      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+      label: name, action: () => { pushUndo('Add Modifier'); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
     })),
     '---',
     { header: 'Add Filter' },
     ...Object.keys(FILTER_DEFS).map(name => ({
-      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+      label: name, action: () => { pushUndo('Add Filter'); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
     }))
   ];
   showMenu(e.clientX, e.clientY, items);
@@ -640,7 +753,7 @@ function showAddCriteriaMenu(e, parentPath) {
   const items = [
     { header: 'Add Selection Criteria' },
     ...Object.keys(SELCRITERIA_DEFS).map(name => ({
-      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_SelectionCriteria) { node.m_SelectionCriteria.push(createSelCriteria(name)); expandedNodes.add(parentPath + '.m_SelectionCriteria'); renderAll(); } }
+      label: name, action: () => { pushUndo('Add Criteria'); const node = resolveNode(parentPath); if (node && node.m_SelectionCriteria) { node.m_SelectionCriteria.push(createSelCriteria(name)); expandedNodes.add(parentPath + '.m_SelectionCriteria'); renderAll(); } }
     }))
   ];
   showMenu(e.clientX, e.clientY, items);
@@ -658,12 +771,12 @@ function showOperatorPicker(x, y, parentPath) {
   const items = [
     { header: 'Modifiers' },
     ...Object.keys(OPERATOR_DEFS).map(name => ({
-      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+      label: name, action: () => { pushUndo('Add Modifier'); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
     })),
     '---',
     { header: 'Filters' },
     ...Object.keys(FILTER_DEFS).map(name => ({
-      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+      label: name, action: () => { pushUndo('Add Filter'); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
     }))
   ];
   showMenu(x, y, items);
@@ -677,7 +790,7 @@ function showCriteriaPicker(x, y, parentPath) {
 function deleteNode(path) {
   const pa = resolveParentArray(path);
   if (!pa) return;
-  pushUndo();
+  pushUndo('Delete');
   pa.arr.splice(pa.idx, 1);
   if (selectedNodePath === path) selectedNodePath = null;
   renderAll();
@@ -686,7 +799,7 @@ function deleteNode(path) {
 function duplicateNode(path) {
   const pa = resolveParentArray(path);
   if (!pa) return;
-  pushUndo();
+  pushUndo('Duplicate');
   const clone = deepClone(pa.arr[pa.idx]);
   // Reassign IDs
   function reassignIds(n) {
@@ -708,7 +821,7 @@ function moveNode(path, direction) {
   if (!pa) return;
   const newIdx = pa.idx + direction;
   if (newIdx < 0 || newIdx >= pa.arr.length) return;
-  pushUndo();
+  pushUndo('Move');
   const item = pa.arr.splice(pa.idx, 1)[0];
   pa.arr.splice(newIdx, 0, item);
   // Update selectedNodePath to reflect new index
@@ -732,7 +845,7 @@ function pasteNode(path) {
   if (!clipboard) return;
   const node = resolveNode(path);
   if (!node) return;
-  pushUndo();
+  pushUndo('Paste');
   const clone = deepClone(clipboard);
   function reassignIds(n) {
     if (n && typeof n === 'object') {
@@ -773,7 +886,7 @@ function startRename(path, row) {
   input.focus();
   input.select();
   function finish() {
-    pushUndo();
+    pushUndo('Rename');
     const val = input.value.trim();
     if (path.startsWith('variables')) {
       node.m_VariableName = val || 'unnamed';
@@ -829,7 +942,7 @@ function renderProperties() {
       if (key === 'm_nElementID' || key === 'm_sLabel' || key === 'm_sReferenceObjectID') return;
       const val = node[key] !== undefined ? node[key] : null;
       propsSection.body.appendChild(createPropertyWidget(key, val, (newVal) => {
-        pushUndo();
+        pushUndo('Edit Property');
         if (newVal === null || newVal === undefined) delete node[key];
         else node[key] = newVal;
         updatePreview();
@@ -841,7 +954,7 @@ function renderProperties() {
       if (key === '_class' || key === 'm_nElementID' || key === 'm_Children' || key === 'm_Modifiers' || key === 'm_SelectionCriteria' || key === 'm_sLabel') return;
       const val = node[key];
       propsSection.body.appendChild(createPropertyWidget(key, val, (newVal) => {
-        pushUndo();
+        pushUndo('Edit Property');
         if (newVal === null || newVal === undefined) delete node[key];
         else node[key] = newVal;
         updatePreview();
@@ -879,13 +992,13 @@ function renderVariableProps(container, node, _path) {
   const varType = getShortClass(node._class);
 
   // Variable name
-  section.body.appendChild(createPropertyWidget('m_VariableName', node.m_VariableName || '', (v) => { pushUndo(); node.m_VariableName = v; renderTree(); updatePreview(); }));
+  section.body.appendChild(createPropertyWidget('m_VariableName', node.m_VariableName || '', (v) => { pushUndo('Rename Variable'); node.m_VariableName = v; renderTree(); updatePreview(); }, undefined, true));
   // Parameter name
-  section.body.appendChild(createPropertyWidget('m_ParameterName', node.m_ParameterName || '', (v) => { pushUndo(); node.m_ParameterName = v; updatePreview(); }));
+  section.body.appendChild(createPropertyWidget('m_ParameterName', node.m_ParameterName || '', (v) => { pushUndo('Edit Variable'); node.m_ParameterName = v; updatePreview(); }, undefined, true));
   // Expose as parameter
-  section.body.appendChild(createPropertyWidget('m_bExposeAsParameter', node.m_bExposeAsParameter !== false, (v) => { pushUndo(); node.m_bExposeAsParameter = v; updatePreview(); }));
+  section.body.appendChild(createPropertyWidget('m_bExposeAsParameter', node.m_bExposeAsParameter !== false, (v) => { pushUndo('Edit Variable'); node.m_bExposeAsParameter = v; updatePreview(); }, undefined, true));
   // Default value - type depends on variable type
-  section.body.appendChild(createPropertyWidget('m_DefaultValue', node.m_DefaultValue, (v) => { pushUndo(); node.m_DefaultValue = v; updatePreview(); }, varType, true));
+  section.body.appendChild(createPropertyWidget('m_DefaultValue', node.m_DefaultValue, (v) => { pushUndo('Edit Variable'); node.m_DefaultValue = v; updatePreview(); }, varType, true));
   // Type display (read-only)
   const typeRow = document.createElement('div');
   typeRow.className = 'prop-row';
@@ -943,7 +1056,7 @@ function createModifierFrame(mod, index, parentPath, arrayKey) {
     if (key === 'm_nElementID') return;
     const val = mod[key] !== undefined ? mod[key] : null;
     body.appendChild(createPropertyWidget(key, val, (newVal) => {
-      pushUndo();
+      pushUndo('Edit Property');
       const parentNode = resolveNode(parentPath);
       if (!parentNode) return;
       const arr = parentNode[arrayKey];
@@ -961,12 +1074,12 @@ function createModifierFrame(mod, index, parentPath, arrayKey) {
 
 // Modifier operations
 function deleteModifier(parentPath, arrayKey, index) {
-  pushUndo();
+  pushUndo('Delete Modifier');
   const node = resolveNode(parentPath);
   if (node && node[arrayKey]) { node[arrayKey].splice(index, 1); renderAll(); }
 }
 function duplicateModifier(parentPath, arrayKey, index) {
-  pushUndo();
+  pushUndo('Duplicate Modifier');
   const node = resolveNode(parentPath);
   if (node && node[arrayKey] && node[arrayKey][index]) {
     const clone = deepClone(node[arrayKey][index]);
@@ -981,7 +1094,7 @@ function moveModifier(parentPath, arrayKey, index, direction) {
   const arr = node[arrayKey];
   const newIdx = index + direction;
   if (newIdx < 0 || newIdx >= arr.length) return;
-  pushUndo();
+  pushUndo('Move Modifier');
   const item = arr.splice(index, 1)[0];
   arr.splice(newIdx, 0, item);
   renderAll();
@@ -1028,9 +1141,7 @@ function getPropColor(type) {
 
 // Determine whether a property supports input-choice mode selector
 function supportsInputChoice(type, isVariable = false) {
-  // For variables - only default/value (but actually we might want more later, for now follow instructions)
-  if (isVariable) return ['float','int','string','vec3'].includes(type);
-  // For normal properties - as it was
+  if (isVariable) return false; // Variable fields always use plain direct inputs
   return ['float','int','string','bool','vec3','combo','expression'].includes(type);
 }
 
@@ -1079,6 +1190,10 @@ function createSliderWidget(val, step, isInt, onInput) {
     if (v > parseFloat(slider.max)) slider.max = v * 2;
     onInput(v);
   });
+  slider.addEventListener('mousedown', () => {
+    sliderDragging = true;
+    sliderDragUndoPushed = false;
+  });
   slider.addEventListener('input', () => {
     const v = isInt ? parseInt(slider.value) : parseFloat(slider.value);
     numInp.value = v;
@@ -1088,6 +1203,13 @@ function createSliderWidget(val, step, isInt, onInput) {
   w.appendChild(slider);
   return w;
 }
+
+// Single global listener resets drag state when the mouse button is released
+// anywhere on the page (handles releasing outside the slider track).
+document.addEventListener('mouseup', () => {
+  sliderDragging = false;
+  sliderDragUndoPushed = false;
+}, true);
 
 // Build the input-choice widget wrapper
 function buildInputChoiceWidget(key, value, type, onChange, isVec3Component, isVariable = false) {
@@ -1123,14 +1245,14 @@ function buildInputChoiceWidget(key, value, type, onChange, isVec3Component, isV
   // For vec3 component default is same as value
   sel.value = (isVec3Component && currentMode === 'default') ? 'value' : currentMode;
 
-  function renderMode(mode) {
+  function renderMode(mode, shouldEmit = true) {
     body.innerHTML = '';
     if (mode === 'default') {
       const def = document.createElement('div');
       def.className = 'input-choice-default';
       def.textContent = '(default)';
       body.appendChild(def);
-      onChange(null);
+      if (shouldEmit) onChange(null);
       return;
     }
     if (mode === 'variable') {
@@ -1225,9 +1347,41 @@ function buildInputChoiceWidget(key, value, type, onChange, isVec3Component, isV
     }
   }
 
-  renderMode(sel.value);
-  sel.addEventListener('change', () => renderMode(sel.value));
+  renderMode(sel.value, false);
+  sel.addEventListener('change', () => {
+    pushUndo('Edit Property');
+    renderMode(sel.value, true);
+  });
   return wrapper;
+}
+
+// Plain XYZ number inputs — used for vector variable default values (no mode selectors)
+function buildSimpleVec3Widget(value, onChange) {
+  const container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-direction:column;gap:4px;flex:1';
+  const axes = ['X', 'Y', 'Z'];
+  const colors = ['#f38ba8', '#a6e3a1', '#89b4fa'];
+  const comps = Array.isArray(value) ? [...value] : [0, 0, 0];
+  while (comps.length < 3) comps.push(0);
+  axes.forEach((axis, ai) => {
+    const row = document.createElement('div');
+    row.className = 'vec3-comp-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'vec3-comp-label';
+    lbl.style.color = colors[ai];
+    lbl.textContent = axis;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'prop-input'; inp.step = '0.01';
+    inp.value = typeof comps[ai] === 'number' ? comps[ai] : 0;
+    inp.addEventListener('change', () => {
+      comps[ai] = parseFloat(inp.value) || 0;
+      onChange([...comps]);
+    });
+    row.appendChild(lbl);
+    row.appendChild(inp);
+    container.appendChild(row);
+  });
+  return container;
 }
 
 // Build vec3 widget with top-level mode (Default/Variable/Components) and per-component modes
@@ -1292,7 +1446,7 @@ function buildVec3Widget(key, value, onChange, isVariable = false) {
     }
   }
 
-  function renderTopMode(mode) {
+  function renderTopMode(mode, shouldEmit = true) {
     topBody.innerHTML = '';
     compContainer.innerHTML = '';
     if (mode === 'default') {
@@ -1302,7 +1456,7 @@ function buildVec3Widget(key, value, onChange, isVariable = false) {
       def.style.borderRadius = 'var(--radius-sm)';
       def.style.marginLeft = '4px';
       topBody.appendChild(def);
-      onChange(null);
+      if (shouldEmit) onChange(null);
       return;
     }
     if (mode === 'variable') {
@@ -1349,8 +1503,11 @@ function buildVec3Widget(key, value, onChange, isVariable = false) {
     });
   }
 
-  renderTopMode(topMode);
-  topSel.addEventListener('change', () => renderTopMode(topSel.value));
+  renderTopMode(topMode, false);
+  topSel.addEventListener('change', () => {
+    pushUndo('Edit Property');
+    renderTopMode(topSel.value, true);
+  });
   return container;
 }
 
@@ -1366,17 +1523,21 @@ function createPropertyWidget(key, value, onChange, varType, isVariable = false)
   const valDiv = document.createElement('div');
   valDiv.className = 'prop-value';
 
-  // Vec3 gets its own special composite widget
+  // Vec3: for variables use a simple XYZ input, for regular props use the full widget
   if (type === 'vec3') {
-    valDiv.appendChild(buildVec3Widget(key, value, onChange, isVariable));
+    if (isVariable) {
+      valDiv.appendChild(buildSimpleVec3Widget(value, onChange));
+    } else {
+      valDiv.appendChild(buildVec3Widget(key, value, onChange, false));
+    }
     row.appendChild(label);
     row.appendChild(valDiv);
     return row;
   }
 
-  // Types that support input-choice mode selector
+  // Types that support input-choice mode selector (never for variables)
   if (supportsInputChoice(type, isVariable)) {
-    valDiv.appendChild(buildInputChoiceWidget(key, value, type, onChange, false, isVariable));
+    valDiv.appendChild(buildInputChoiceWidget(key, value, type, onChange, false, false));
     row.appendChild(label);
     row.appendChild(valDiv);
     return row;
@@ -1391,6 +1552,24 @@ function createPropertyWidget(key, value, onChange, varType, isVariable = false)
   }
 
   switch (type) {
+    case 'float': {
+      const sw = createSliderWidget(typeof actualValue === 'number' ? actualValue : 0, '0.01', false, (v) => onChange(v));
+      valDiv.appendChild(sw);
+      break;
+    }
+    case 'int': {
+      const sw = createSliderWidget(typeof actualValue === 'number' ? Math.round(actualValue) : 0, '1', true, (v) => onChange(v));
+      valDiv.appendChild(sw);
+      break;
+    }
+    case 'string': {
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.className = 'prop-input';
+      inp.value = actualValue != null ? String(actualValue) : '';
+      inp.addEventListener('change', () => onChange(inp.value));
+      valDiv.appendChild(inp);
+      break;
+    }
     case 'bool': {
       const cb = document.createElement('input');
       cb.type = 'checkbox';
@@ -1558,9 +1737,10 @@ function rgbToHex(r, g, b) {
 
 // ===== PREVIEW / JSON / KV3 =====
 function updatePreview() {
-  document.getElementById('previewTree').innerHTML = syntaxHighlight(JSON.stringify(doc, null, 2));
-  document.getElementById('jsonEditor').value = JSON.stringify(doc, null, 2);
-  document.getElementById('kv3Editor').value = jsonToKV3(doc);
+  const jsonEl = document.getElementById('jsonEditor');
+  const kv3El = document.getElementById('kv3Editor');
+  if (jsonEl) jsonEl.value = JSON.stringify(doc, null, 2);
+  if (kv3El) kv3El.value = jsonToKV3(doc);
 }
 
 function syntaxHighlight(json) {
@@ -1579,12 +1759,13 @@ function switchTab(btn, tabId) {
   document.getElementById(tabId).classList.add('active');
   if (tabId === 'jsonEdit') document.getElementById('jsonEditor').value = JSON.stringify(doc, null, 2);
   if (tabId === 'kv3Tab') document.getElementById('kv3Editor').value = jsonToKV3(doc);
+  if (tabId === 'historyTab') renderUndoHistory();
 }
 
 function applyJSONEdit() {
   try {
     const newDoc = JSON.parse(document.getElementById('jsonEditor').value);
-    pushUndo();
+    pushUndo('Apply JSON');
     doc = newDoc;
     recalcAllIds();
     renderAll();
@@ -1599,7 +1780,7 @@ function applyKV3Edit() {
     document.getElementById('kv3Editor').removeAttribute('readonly');
     const kv3 = document.getElementById('kv3Editor').value;
     const parsed = kv3ToJSON(kv3);
-    pushUndo();
+    pushUndo('Apply KV3');
     doc = parsed;
     recalcAllIds();
     renderAll();
@@ -1770,7 +1951,7 @@ class KV3Parser {
 
 // ===== FILE OPERATIONS =====
 function newDocument() {
-  pushUndo();
+  pushUndo('New Document');
   doc = { generic_data_type: 'CSmartPropRoot', m_Children: [], m_Variables: [] };
   nextElementId = 1;
   selectedNodePath = null;
@@ -1795,7 +1976,7 @@ function importJSON() {
         } else {
           parsed = JSON.parse(text);
         }
-        pushUndo();
+        pushUndo('Import');
         doc = parsed;
         if (!doc.m_Children) doc.m_Children = [];
         if (!doc.m_Variables) doc.m_Variables = [];
@@ -1823,7 +2004,7 @@ function importKV3() {
     reader.onload = (ev) => {
       try {
         const parsed = kv3ToJSON(ev.target.result);
-        pushUndo();
+        pushUndo('Import KV3');
         doc = parsed;
         if (!doc.m_Children) doc.m_Children = [];
         if (!doc.m_Variables) doc.m_Variables = [];
@@ -1864,7 +2045,7 @@ document.getElementById('btnAddElement').addEventListener('click', (e) => {
   e.stopPropagation();
   const rect = e.target.getBoundingClientRect();
   showElementPicker(rect.left, rect.bottom + 4, (typeName) => {
-    pushUndo();
+    pushUndo('Add Element');
     const node = createElement(typeName);
     // If an element is selected and can have children, add as child
     if (selectedNodePath && selectedNodePath.startsWith('children')) {
@@ -1886,18 +2067,21 @@ document.getElementById('btnAddVariable').addEventListener('click', (e) => {
   e.stopPropagation();
   const rect = e.target.getBoundingClientRect();
   const items = VARIABLE_TYPES.map(t => ({
-    label: t, action: () => { pushUndo(); doc.m_Variables.push(createVariable(t)); expandedNodes.add('variables'); renderAll(); }
+    label: t, action: () => { pushUndo('Add Variable'); doc.m_Variables.push(createVariable(t)); expandedNodes.add('variables'); renderAll(); }
   }));
   showMenu(rect.left, rect.bottom + 4, [{ header: 'Variable Type' }, ...items]);
 });
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'n') { e.preventDefault(); newDocument(); return; }
+    if (e.key === 'z') { e.preventDefault(); undo(); } else
+    if (e.key === 'y') { e.preventDefault(); redo(); } else
+    if (e.key === 'Z' && e.shiftKey) { e.preventDefault(); redo(); }
+  }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if (e.ctrlKey || e.metaKey) {
-    if (e.key === 'z') { e.preventDefault(); undo(); }
-    if (e.key === 'y') { e.preventDefault(); redo(); }
-    if (e.key === 'Z' && e.shiftKey) { e.preventDefault(); redo(); }
     if (e.key === 'd') { e.preventDefault(); if (selectedNodePath) duplicateNode(selectedNodePath); }
     if (e.key === 'c') { e.preventDefault(); if (selectedNodePath) copyNode(selectedNodePath); }
     if (e.key === 'x') { e.preventDefault(); if (selectedNodePath) cutNode(selectedNodePath); }
@@ -1930,7 +2114,7 @@ function countNodes(arr) {
 const dockPanelMap = {
   hierarchy: document.getElementById('hierarchyPanel'),
   properties: document.getElementById('propsPanel'),
-  preview: document.getElementById('previewPanel')
+  history: document.getElementById('historyPanel')
 };
 const dockFloatingState = {}; // track undocked panels
 
@@ -2081,8 +2265,69 @@ document.querySelectorAll('.dock-resize-h').forEach(handle => {
   });
 });
 
+// ===== CUSTOM MENU BAR =====
+function initMenuBar() {
+  const menuItems = document.querySelectorAll('.menu-item[data-menu]');
+  const dropdowns = document.querySelectorAll('.menu-dropdown');
+  let activeDropdown = null;
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = item.dataset.menu;
+      const dd = document.getElementById('menu' + menu.charAt(0).toUpperCase() + menu.slice(1));
+      if (activeDropdown === dd) {
+        activeDropdown.classList.remove('open');
+        activeDropdown = null;
+        return;
+      }
+      dropdowns.forEach(d => d.classList.remove('open'));
+      if (dd) {
+        dd.classList.add('open');
+        const rect = item.getBoundingClientRect();
+        dd.style.left = rect.left + 'px';
+        dd.style.top = (rect.bottom) + 'px';
+        activeDropdown = dd;
+      }
+    });
+  });
+
+  document.addEventListener('click', () => {
+    dropdowns.forEach(d => d.classList.remove('open'));
+    activeDropdown = null;
+  });
+
+  document.querySelectorAll('.menu-dropdown-item[data-action]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = el.dataset.action;
+      if (action === 'newDocument') newDocument();
+      else if (action === 'importJSON') importJSON();
+      else if (action === 'importKV3') importKV3();
+      else if (action === 'exportJSON') exportJSON();
+      else if (action === 'exportKV3') exportKV3();
+      else if (action === 'quit') { if (window.electronAPI) window.electronAPI.quitApp(); else window.close(); }
+      else if (action === 'addElement') document.getElementById('btnAddElement')?.click();
+      else if (action === 'addVariable') document.getElementById('btnAddVariable')?.click();
+      else if (action === 'undo') undo();
+      else if (action === 'redo') redo();
+      else if (action === 'minimize' && window.electronAPI?.minimize) window.electronAPI.minimize();
+      else if (action === 'zoom' && window.electronAPI?.zoom) window.electronAPI.zoom();
+      else if (action === 'fullscreen' && window.electronAPI?.toggleFullScreen) window.electronAPI.toggleFullScreen();
+      else if (action === 'about') setStatus('SmartProp Editor v0.1');
+      dropdowns.forEach(d => d.classList.remove('open'));
+      activeDropdown = null;
+    });
+  });
+}
+
 // ===== INIT =====
+initMenuBar();
 renderAll();
+const btnMod = document.getElementById('btnToggleModifiers');
+const btnCrit = document.getElementById('btnToggleCriteria');
+if (btnMod) btnMod.classList.toggle('active', showModifiersInTree);
+if (btnCrit) btnCrit.classList.toggle('active', showSelectionCriteriaInTree);
 
 if (window.electronAPI) {
   window.electronAPI.onOpenFile((filePath) => {
@@ -2092,7 +2337,7 @@ if (window.electronAPI) {
         const parsed = content.trim().startsWith('<!--') 
           ? kv3ToJSON(content) 
           : JSON.parse(content)
-        pushUndo()
+        pushUndo('Open File')
         doc = parsed
         if (!doc.m_Children) doc.m_Children = []
         if (!doc.m_Variables) doc.m_Variables = []

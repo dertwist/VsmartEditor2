@@ -10,6 +10,36 @@
 </head>
 <body>
 <div id="app">
+  <div class="app-menu-bar">
+    <div class="menu-item" data-menu="file">File</div>
+    <div class="menu-item" data-menu="edit">Edit</div>
+    <div class="menu-item" data-menu="window">Window</div>
+    <div class="menu-item" data-menu="help">Help</div>
+  </div>
+  <div class="menu-dropdown" id="menuFile">
+    <div class="menu-dropdown-item" data-action="newDocument"><span>New</span><span class="shortcut">Ctrl+N</span></div>
+    <div class="menu-dropdown-item" data-action="importJSON"><span>Import JSON</span></div>
+    <div class="menu-dropdown-item" data-action="importKV3"><span>Import KV3</span></div>
+    <div class="menu-dropdown-item" data-action="exportJSON"><span>Export JSON</span></div>
+    <div class="menu-dropdown-item" data-action="exportKV3"><span>Export KV3</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-dropdown-item" data-action="quit"><span>Quit</span></div>
+  </div>
+  <div class="menu-dropdown" id="menuEdit">
+    <div class="menu-dropdown-item" data-action="addElement"><span>Add Element</span><span class="shortcut">Ctrl+F</span></div>
+    <div class="menu-dropdown-item" data-action="addVariable"><span>Add Variable</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-dropdown-item" data-action="undo"><span>Undo</span><span class="shortcut">Ctrl+Z</span></div>
+    <div class="menu-dropdown-item" data-action="redo"><span>Redo</span><span class="shortcut">Ctrl+Shift+Z</span></div>
+  </div>
+  <div class="menu-dropdown" id="menuWindow">
+    <div class="menu-dropdown-item" data-action="minimize"><span>Minimize</span></div>
+    <div class="menu-dropdown-item" data-action="zoom"><span>Zoom</span></div>
+    <div class="menu-dropdown-item" data-action="fullscreen"><span>Toggle Full Screen</span></div>
+  </div>
+  <div class="menu-dropdown" id="menuHelp">
+    <div class="menu-dropdown-item" data-action="about"><span>About SmartProp Editor</span></div>
+  </div>
   <div class="dock-container" id="dockContainer">
     <!-- Left: Hierarchy -->
     <div class="dock-panel panel" id="hierarchyPanel" style="width:280px;min-width:180px;border-right:1px solid var(--border-subtle);background:var(--bg-secondary)">
@@ -20,6 +50,8 @@
           <button id="btnAddVariable" title="Add Variable"><img src="assets/images/common/add_node.png" width="14" height="14" alt="Add Variable"></button>
           <button onclick="collapseAllTree()" title="Collapse All"><img src="assets/images/common/collapse_all.png" width="14" height="14" alt="Collapse All"></button>
           <button onclick="expandAllTree()" title="Expand All"><img src="assets/images/common/expand_all.png" width="14" height="14" alt="Expand All"></button>
+          <button id="btnToggleModifiers" onclick="toggleShowModifiers()" title="Show/Hide Modifiers">⚙</button>
+          <button id="btnToggleCriteria" onclick="toggleShowCriteria()" title="Show/Hide Selection Criteria">🎯</button>
           <button onclick="undockPanel('hierarchy')" title="Undock">⇱</button>
         </div>
       </div>
@@ -42,20 +74,22 @@
       </div>
     </div>
     <div class="dock-resize-h" data-resize="props-preview"></div>
-    <!-- Right: Preview/Edit -->
-    <div class="dock-panel panel" id="previewPanel" style="width:380px;min-width:200px;background:var(--bg-secondary)">
-      <div class="dock-handle" data-dock-id="preview">
-        <span class="dock-handle-title">Preview</span>
+    <!-- Right: Undo History / JSON Edit / KV3 -->
+    <div class="dock-panel panel" id="historyPanel" style="width:320px;min-width:200px;background:var(--bg-secondary)">
+      <div class="dock-handle" data-dock-id="history">
+        <span class="dock-handle-title">History</span>
         <div class="dock-handle-actions">
-          <button onclick="undockPanel('preview')" title="Undock">⇱</button>
+          <button onclick="undockPanel('history')" title="Undock">⇱</button>
         </div>
       </div>
       <div class="panel-tabs">
-        <button class="panel-tab active" onclick="switchTab(this,'preview')">Preview</button>
+        <button class="panel-tab active" onclick="switchTab(this,'historyTab')">History</button>
         <button class="panel-tab" onclick="switchTab(this,'jsonEdit')">JSON Edit</button>
         <button class="panel-tab" onclick="switchTab(this,'kv3Tab')">KV3</button>
       </div>
-      <div class="tab-content active" id="preview"><div class="preview-tree" id="previewTree"></div></div>
+      <div class="tab-content active" id="historyTab">
+        <div id="undoHistoryList" class="history-list"></div>
+      </div>
       <div class="tab-content" id="jsonEdit"><textarea class="code-area" id="jsonEditor" spellcheck="false"></textarea><div style="padding:6px;flex-shrink:0;border-top:1px solid var(--border-subtle)"><button class="btn btn-sm btn-accent" onclick="applyJSONEdit()">Apply Changes</button></div></div>
       <div class="tab-content" id="kv3Tab"><textarea class="code-area" id="kv3Editor" spellcheck="false" readonly></textarea><div style="padding:6px;flex-shrink:0;border-top:1px solid var(--border-subtle);display:flex;gap:4px"><button class="btn btn-sm" onclick="copyKV3()">Copy KV3</button><button class="btn btn-sm btn-accent" onclick="applyKV3Edit()">Apply KV3</button></div></div>
     </div>
