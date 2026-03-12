@@ -10,33 +10,16 @@
 </head>
 <body>
 <div id="app">
-  <div class="toolbar">
-    <div class="toolbar-group">
-      <button class="btn btn-sm" onclick="newDocument()" title="New">📄 New</button>
-      <button class="btn btn-sm" onclick="importJSON()" title="Import JSON">📥 JSON</button>
-      <button class="btn btn-sm" onclick="importKV3()" title="Import KV3">📥 KV3</button>
-      <button class="btn btn-sm" onclick="exportJSON()" title="Export JSON">📤 JSON</button>
-      <button class="btn btn-sm" onclick="exportKV3()" title="Export KV3">📤 KV3</button>
-    </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
-      <button class="btn btn-sm btn-accent" id="btnAddElement" title="Add Element (Ctrl+F)">+ Element</button>
-      <button class="btn btn-sm" id="btnAddVariable" title="Add Variable">+ Variable</button>
-    </div>
-    <div class="toolbar-sep"></div>
-    <div class="toolbar-group">
-      <button class="btn btn-sm btn-icon" onclick="undo()" title="Undo (Ctrl+Z)">↶</button>
-      <button class="btn btn-sm btn-icon" onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
-    </div>
-  </div>
   <div class="dock-container" id="dockContainer">
     <!-- Left: Hierarchy -->
     <div class="dock-panel panel" id="hierarchyPanel" style="width:280px;min-width:180px;border-right:1px solid var(--border-subtle);background:var(--bg-secondary)">
       <div class="dock-handle" data-dock-id="hierarchy">
         <span class="dock-handle-title">Hierarchy</span>
         <div class="dock-handle-actions">
-          <button onclick="collapseAllTree()" title="Collapse All">➖</button>
-          <button onclick="expandAllTree()" title="Expand All">📂</button>
+          <button id="btnAddElement" title="Add Element (Ctrl+F)"><img src="assets/images/common/add_editor_node.png" width="14" height="14" alt="Add Element"></button>
+          <button id="btnAddVariable" title="Add Variable"><img src="assets/images/common/add_node.png" width="14" height="14" alt="Add Variable"></button>
+          <button onclick="collapseAllTree()" title="Collapse All"><img src="assets/images/common/collapse_all.png" width="14" height="14" alt="Collapse All"></button>
+          <button onclick="expandAllTree()" title="Expand All"><img src="assets/images/common/expand_all.png" width="14" height="14" alt="Expand All"></button>
           <button onclick="undockPanel('hierarchy')" title="Undock">⇱</button>
         </div>
       </div>
