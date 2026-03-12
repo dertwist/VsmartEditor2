@@ -1,16 +1,47 @@
 {
-  "name": "lazy-angle-tempt-zeunj",
-  "productName": "lazy-angle-tempt-zeunj",
-  "description": "My Electron application description",
+  "name": "vsmart-editor",
+  "productName": "VsmartEditor2",
+  "description": "VsmartEditor2 - Electron desktop app",
   "keywords": [],
   "main": "./main.js",
   "version": "1.0.0",
-  "author": "maxharrow",
+  "author": "dertwist",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:all": "electron-builder --win --mac"
+  },
+  "build": {
+    "appId": "com.dertwist.vsmarteditor2",
+    "productName": "VsmartEditor2",
+    "files": [
+      "**/*",
+      "!node_modules/**",
+      "!.git/**",
+      "!dist/**",
+      "!*.md"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {},
   "devDependencies": {
-    "electron": "41.0.0"
+    "electron": "41.0.0",
+    "electron-builder": "^25.1.8"
   }
 }
