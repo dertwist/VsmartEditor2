@@ -15,6 +15,14 @@
   "build": {
     "appId": "com.dertwist.vsmarteditor2",
     "productName": "VsmartEditor2",
+    "fileAssociations": [
+      {
+        "ext": "vsmart",
+        "name": "SmartProp File",
+        "description": "Source 2 SmartProp",
+        "role": "Editor"
+      }
+    ],
     "files": [
       "**/*",
       "!node_modules/**",
