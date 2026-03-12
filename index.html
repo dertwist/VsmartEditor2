@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartProp Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-primary:#1e1e2e;--bg-secondary:#181825;--bg-tertiary:#11111b;
+  --bg-surface:#313244;--bg-hover:#45475a;--bg-selected:#585b70;
+  --text-primary:#cdd6f4;--text-secondary:#a6adc8;--text-muted:#6c7086;
+  --accent:#89b4fa;--accent-hover:#74c7ec;--accent-dim:rgba(137,180,250,.12);
+  --green:#a6e3a1;--red:#f38ba8;--yellow:#f9e2af;--peach:#fab387;--mauve:#cba6f7;
+  --border:#45475a;--border-subtle:#313244;
+  --radius:6px;--radius-sm:4px;
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --color-float:rgb(181,255,239);--color-int:rgb(108,135,255);
+  --color-string:rgb(255,209,153);--color-expr:rgb(255,123,125);
+  --color-bool:var(--text-primary);--color-combo:var(--text-secondary);
+  --color-vec3:rgb(181,255,239);--color-color:#f5c2e7;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-primary);font-size:13px;line-height:1.5}
+input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit}
+#app{display:flex;flex-direction:column;height:100vh}
+.toolbar{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);flex-wrap:wrap;flex-shrink:0}
+.toolbar-group{display:flex;gap:4px;align-items:center}
+.toolbar-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border-subtle);background:var(--bg-surface);color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:500;transition:background .15s,border-color .15s;white-space:nowrap}
+.btn:hover{background:var(--bg-hover);border-color:var(--border)}
+.btn-accent{background:var(--accent-dim);border-color:rgba(137,180,250,.25);color:var(--accent)}
+.btn-accent:hover{background:rgba(137,180,250,.2)}
+.btn-sm{padding:2px 7px;font-size:11px}
+.btn-icon{padding:4px 6px;min-width:0}
+.btn-danger{color:var(--red)}
+.panel{display:flex;flex-direction:column;border-right:1px solid var(--border-subtle);background:var(--bg-secondary);min-height:0;overflow:hidden}
+.panel:last-child{border-right:none}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);flex-shrink:0}
+.panel-header-actions{display:flex;gap:4px}
+.panel-body{flex:1;overflow-y:auto;padding:0}
+.panel-body::-webkit-scrollbar{width:6px}
+.panel-body::-webkit-scrollbar-track{background:transparent}
+.panel-body::-webkit-scrollbar-thumb{background:var(--bg-hover);border-radius:3px}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border-subtle);flex-shrink:0}
+.panel-tab{flex:1;padding:6px 12px;text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s}
+.panel-tab:hover{color:var(--text-secondary)}
+.panel-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none;height:100%;overflow:auto}.tab-content.active{display:flex;flex-direction:column}
+/* Tree */
+.tree{padding:4px 0;user-select:none}
+.tree-item-row{display:flex;align-items:center;gap:4px;padding:2px 8px;cursor:pointer;border-radius:0;transition:background .1s;font-size:12px}
+.tree-item-row:hover{background:var(--bg-hover)}
+.tree-item-row.selected{background:var(--accent-dim);outline:1px solid rgba(137,180,250,.2)}
+.tree-item-row.drag-over-above{box-shadow:inset 0 2px 0 var(--accent)}
+.tree-item-row.drag-over-below{box-shadow:inset 0 -2px 0 var(--accent)}
+.tree-item-row.drag-over-inside{background:rgba(137,180,250,.15)}
+.tree-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);flex-shrink:0;transition:transform .15s;font-size:10px}
+.tree-toggle.expanded{transform:rotate(90deg)}
+.tree-toggle.empty{visibility:hidden}
+.tree-icon{flex-shrink:0;font-size:13px;width:18px;text-align:center}
+.tree-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-badge{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
+.tree-badge.modifier{background:rgba(203,166,247,.15);color:var(--mauve)}
+.tree-badge.filter{background:rgba(166,227,161,.15);color:var(--green)}
+.tree-badge.criteria{background:rgba(249,226,175,.15);color:var(--yellow)}
+/* Context menu */
+.ctx-menu{position:fixed;z-index:9999;min-width:200px;max-height:70vh;overflow-y:auto;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:fadeIn .1s}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text-primary);transition:background .1s}
+.ctx-item:hover{background:var(--bg-hover)}
+.ctx-item.danger{color:var(--red)}
+.ctx-item .shortcut{margin-left:auto;color:var(--text-muted);font-size:10px;font-family:var(--font-mono)}
+.ctx-sep{height:1px;background:var(--border-subtle);margin:4px 0}
+.ctx-header{padding:4px 10px;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+/* Dropdown menu (for Add Element, etc.) */
+.dropdown-menu{position:fixed;z-index:9998;min-width:200px;max-height:70vh;overflow-y:auto;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:fadeIn .1s}
+.dropdown-menu::-webkit-scrollbar{width:5px}
+.dropdown-menu::-webkit-scrollbar-thumb{background:var(--bg-hover);border-radius:3px}
+.dropdown-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text-primary);transition:background .1s}
+.dropdown-item:hover{background:var(--bg-hover)}
+/* Properties panel */
+.props-section{border-bottom:1px solid var(--border-subtle)}
+.props-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);user-select:none}
+.props-section-header:hover{background:var(--bg-hover)}
+.props-section-header .toggle{font-size:10px;color:var(--text-muted);transition:transform .15s}
+.props-section-header .toggle.collapsed{transform:rotate(-90deg)}
+.props-section-body{padding:0}
+.props-section-body.collapsed{display:none}
+/* Property row */
+.prop-row{display:flex;align-items:center;gap:8px;padding:5px 12px;min-height:30px;border-bottom:1px solid rgba(69,71,90,.3)}
+.prop-row:hover{background:rgba(69,71,90,.15)}
+.prop-label{width:140px;flex-shrink:0;font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prop-value{flex:1;min-width:0;display:flex;align-items:center;gap:4px}
+.prop-input{width:100%;padding:3px 8px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;outline:none;transition:border-color .15s}
+.prop-input:focus{border-color:var(--accent)}
+.prop-input[type=number]{font-family:var(--font-mono);text-align:right;-moz-appearance:textfield}
+.prop-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+select.prop-input{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236c7086' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:24px}
+input[type=checkbox].prop-check{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+input[type=color].prop-color{width:32px;height:24px;padding:1px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);cursor:pointer;flex-shrink:0}
+/* Vector3D row */
+.vec3-row{display:flex;gap:4px;flex:1}
+.vec3-row .vec3-field{flex:1;display:flex;align-items:center;gap:2px}
+.vec3-row .vec3-label{font-size:10px;font-weight:600;width:14px;text-align:center;flex-shrink:0}
+.vec3-row .vec3-label.x{color:#f38ba8}.vec3-row .vec3-label.y{color:#a6e3a1}.vec3-row .vec3-label.z{color:#89b4fa}
+.vec3-row input{width:100%;padding:3px 4px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;font-family:var(--font-mono);text-align:right;outline:none;-moz-appearance:textfield}
+.vec3-row input::-webkit-inner-spin-button{-webkit-appearance:none}
+.vec3-row input:focus{border-color:var(--accent)}
+/* Modifier/Criteria frame */
+.frame{border:1px solid var(--border-subtle);border-radius:var(--radius);margin:6px;overflow:hidden;background:var(--bg-primary)}
+.frame-header{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-surface);cursor:pointer;user-select:none;font-size:12px;font-weight:600}
+.frame-header:hover{background:var(--bg-hover)}
+.frame-header .frame-toggle{font-size:10px;color:var(--text-muted);transition:transform .15s}
+.frame-header .frame-toggle.collapsed{transform:rotate(-90deg)}
+.frame-header .frame-name{flex:1}
+.frame-header .frame-actions{display:flex;gap:2px}
+.frame-header .frame-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;font-size:12px}
+.frame-header .frame-actions button:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
+.frame-header .frame-actions button.del:hover{color:var(--red)}
+.frame-body{border-top:1px solid var(--border-subtle)}
+.frame-body.collapsed{display:none}
+/* Footer */
+.footer{display:flex;align-items:center;justify-content:space-between;padding:4px 12px;background:var(--bg-tertiary);border-top:1px solid var(--border-subtle);font-size:10px;color:var(--text-muted);flex-shrink:0}
+.footer a{color:var(--text-muted);text-decoration:none}.footer a:hover{color:var(--text-secondary)}
+/* JSON/KV3 panels */
+.code-area{flex:1;width:100%;padding:10px;background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-mono);font-size:11px;border:none;outline:none;resize:none;line-height:1.6;tab-size:2}
+.preview-tree{padding:8px;font-family:var(--font-mono);font-size:11px;line-height:1.6;white-space:pre;overflow:auto;flex:1}
+.preview-tree .key{color:var(--accent)}.preview-tree .str{color:var(--green)}.preview-tree .num{color:var(--peach)}.preview-tree .bool{color:var(--mauve)}.preview-tree .null{color:var(--text-muted)}
+/* Empty states */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;color:var(--text-muted);text-align:center;gap:8px;height:100%}
+.empty-state svg{width:32px;height:32px;opacity:.4}
+/* Inline label edit */
+.tree-label-input{background:var(--bg-surface);border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;font-family:var(--font-sans);padding:0 4px;outline:none;width:120px}
+/* Search bar */
+.search-bar{padding:6px 8px;border-bottom:1px solid var(--border-subtle);flex-shrink:0}
+.search-bar input{width:100%;padding:4px 8px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:12px;outline:none}
+.search-bar input:focus{border-color:var(--accent)}
+.search-bar input::placeholder{color:var(--text-muted)}
+.hidden-by-search{display:none!important}
+/* Input choice selector */
+.input-choice-row{display:flex;align-items:stretch;gap:0;flex:1;min-width:0}
+.input-choice-select{width:auto;min-width:52px;max-width:68px;padding:2px 4px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);color:var(--text-muted);font-size:10px;font-weight:600;font-family:var(--font-mono);cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
+.input-choice-select:focus{border-color:var(--accent);z-index:1}
+.input-choice-select option{background:var(--bg-tertiary);color:var(--text-primary)}
+.input-choice-body{flex:1;display:flex;align-items:center;min-width:0}
+.input-choice-body>.prop-input,.input-choice-body>.prop-check,.input-choice-body>.vec3-row,.input-choice-body>select.prop-input{border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.input-choice-default{padding:3px 8px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--text-muted);font-size:11px;font-style:italic;flex:1;cursor:default;user-select:none}
+/* Slider widget */
+.slider-widget{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.slider-widget input[type=number]{width:56px;min-width:56px;flex-shrink:0;padding:3px 4px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:11px;font-family:var(--font-mono);text-align:right;outline:none;-moz-appearance:textfield}
+.slider-widget input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.slider-widget input[type=number]:focus{border-color:var(--accent)}
+.slider-widget input[type=range]{flex:1;min-width:40px;height:4px;-webkit-appearance:none;appearance:none;background:var(--bg-hover);border-radius:2px;outline:none;cursor:pointer}
+.slider-widget input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;transition:transform .1s}
+.slider-widget input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+.slider-widget input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+.slider-widget input[type=range]::-moz-range-track{background:var(--bg-hover);height:4px;border-radius:2px}
+/* Dockable panels */
+.dock-container{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
+.dock-panel{display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative}
+.dock-panel.dock-floating{position:absolute;z-index:100;border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.6);border:1px solid var(--border)}
+.dock-handle{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);cursor:grab;user-select:none;flex-shrink:0}
+.dock-handle:active{cursor:grabbing}
+.dock-handle-title{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)}
+.dock-handle-actions{display:flex;gap:2px}
+.dock-handle-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;font-size:12px;line-height:1}
+.dock-handle-actions button:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
+.dock-resize-h{width:4px;background:transparent;cursor:col-resize;flex-shrink:0;transition:background .15s;z-index:10}
+.dock-resize-h:hover,.dock-resize-h.active{background:var(--accent)}
+/* Vec3 top-level choice row */
+.vec3-choice-row{display:flex;align-items:center;gap:0;flex:1;min-width:0}
+.vec3-choice-select{width:auto;min-width:68px;max-width:80px;padding:2px 4px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-muted);font-size:10px;font-weight:600;font-family:var(--font-mono);cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center}
+.vec3-components{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;padding:2px 0}
+.vec3-comp-row{display:flex;align-items:center;gap:4px}
+.vec3-comp-label{font-size:10px;font-weight:700;width:14px;text-align:center;flex-shrink:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="btn btn-sm" onclick="newDocument()" title="New">📄 New</button>
+      <button class="btn btn-sm" onclick="importJSON()" title="Import JSON">📥 JSON</button>
+      <button class="btn btn-sm" onclick="importKV3()" title="Import KV3">📥 KV3</button>
+      <button class="btn btn-sm" onclick="exportJSON()" title="Export JSON">📤 JSON</button>
+      <button class="btn btn-sm" onclick="exportKV3()" title="Export KV3">📤 KV3</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button class="btn btn-sm btn-accent" id="btnAddElement" title="Add Element (Ctrl+F)">+ Element</button>
+      <button class="btn btn-sm" id="btnAddVariable" title="Add Variable">+ Variable</button>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-group">
+      <button class="btn btn-sm btn-icon" onclick="undo()" title="Undo (Ctrl+Z)">↶</button>
+      <button class="btn btn-sm btn-icon" onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
+    </div>
+  </div>
+  <div class="dock-container" id="dockContainer">
+    <!-- Left: Hierarchy -->
+    <div class="dock-panel panel" id="hierarchyPanel" style="width:280px;min-width:180px;border-right:1px solid var(--border-subtle);background:var(--bg-secondary)">
+      <div class="dock-handle" data-dock-id="hierarchy">
+        <span class="dock-handle-title">Hierarchy</span>
+        <div class="dock-handle-actions">
+          <button onclick="collapseAllTree()" title="Collapse All">▬</button>
+          <button onclick="expandAllTree()" title="Expand All">▤</button>
+          <button onclick="undockPanel('hierarchy')" title="Undock">⇱</button>
+        </div>
+      </div>
+      <div class="search-bar"><input type="text" id="treeSearch" placeholder="Search hierarchy..." oninput="filterTree(this.value)"></div>
+      <div class="panel-body" id="treeContainer">
+        <div class="tree" id="tree"></div>
+      </div>
+    </div>
+    <div class="dock-resize-h" data-resize="hierarchy-props"></div>
+    <!-- Center: Properties -->
+    <div class="dock-panel panel" id="propsPanel" style="flex:1;min-width:200px;border-right:1px solid var(--border-subtle);background:var(--bg-secondary)">
+      <div class="dock-handle" data-dock-id="properties">
+        <span class="dock-handle-title">Properties</span>
+        <div class="dock-handle-actions">
+          <button onclick="undockPanel('properties')" title="Undock">⇱</button>
+        </div>
+      </div>
+      <div class="panel-body" id="propsContainer">
+        <div class="empty-state" id="propsEmpty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4"/></svg><div>Select an item to edit</div></div>
+      </div>
+    </div>
+    <div class="dock-resize-h" data-resize="props-preview"></div>
+    <!-- Right: Preview/Edit -->
+    <div class="dock-panel panel" id="previewPanel" style="width:380px;min-width:200px;background:var(--bg-secondary)">
+      <div class="dock-handle" data-dock-id="preview">
+        <span class="dock-handle-title">Preview</span>
+        <div class="dock-handle-actions">
+          <button onclick="undockPanel('preview')" title="Undock">⇱</button>
+        </div>
+      </div>
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="switchTab(this,'preview')">Preview</button>
+        <button class="panel-tab" onclick="switchTab(this,'jsonEdit')">JSON Edit</button>
+        <button class="panel-tab" onclick="switchTab(this,'kv3Tab')">KV3</button>
+      </div>
+      <div class="tab-content active" id="preview"><div class="preview-tree" id="previewTree"></div></div>
+      <div class="tab-content" id="jsonEdit"><textarea class="code-area" id="jsonEditor" spellcheck="false"></textarea><div style="padding:6px;flex-shrink:0;border-top:1px solid var(--border-subtle)"><button class="btn btn-sm btn-accent" onclick="applyJSONEdit()">Apply Changes</button></div></div>
+      <div class="tab-content" id="kv3Tab"><textarea class="code-area" id="kv3Editor" spellcheck="false" readonly></textarea><div style="padding:6px;flex-shrink:0;border-top:1px solid var(--border-subtle);display:flex;gap:4px"><button class="btn btn-sm" onclick="copyKV3()">Copy KV3</button><button class="btn btn-sm btn-accent" onclick="applyKV3Edit()">Apply KV3</button></div></div>
+    </div>
+  </div>
+  <div class="footer">
+    <span id="statusBar">Ready</span>
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".json,.vsmart,.vdata" style="display:none">
+
+<script>
+// ===== DATA MODEL =====
+let doc = {
+  generic_data_type: "CSmartPropRoot",
+  m_Children: [],
+  m_Variables: []
+};
+let nextElementId = 1;
+let selectedNodePath = null; // path like "children.0.m_Modifiers.1"
+let undoStack = [], redoStack = [], maxUndo = 50;
+let expandedNodes = new Set(['root','children','variables']);
+let clipboard = null;
+
+// ===== ELEMENT/OPERATOR/FILTER DEFINITIONS =====
+const ELEMENT_DEFS = {
+  Group:{_class:'CSmartPropElement_Group', defaults:{}, hasChildren:true},
+  Model:{_class:'CSmartPropElement_Model', defaults:{m_sModelName:'',m_bForceStatic:true,m_vModelScale:null,m_MaterialGroupName:null,m_bDetailObject:false,m_bRigidDeformation:false,m_nLodLevel:-1,m_DetailObjectFadeLevel:'MEDIUM'}, hasChildren:false},
+  SmartProp:{_class:'CSmartPropElement_SmartProp', defaults:{m_sSmartProp:'',m_vModelScale:null}, hasChildren:false},
+  PlaceOnPath:{_class:'CSmartPropElement_PlaceOnPath', defaults:{m_PathName:'path',m_vPathOffset:null,m_flOffsetAlongPath:null,m_PathSpace:null,m_flSpacing:128.0,m_SpacingSpace:'WORLD',m_bContinuousSpline:true,m_bUseFixedUpDirection:true,m_bUseProjectedDistance:true,m_vUpDirection:null,m_UpDirectionSpace:'WORLD'}, hasChildren:true},
+  PlaceInSphere:{_class:'CSmartPropElement_PlaceInSphere', defaults:{m_nCountMin:0,m_nCountMax:0,m_flPositionRadiusInner:0,m_flPositionRadiusOuter:0,m_flRandomness:null,m_bAlignOrientation:false,m_PlacementMode:'SPHERE',m_DistributionMode:'RANDOM',m_vAlignDirection:null,m_vPlaneUpDirection:null}, hasChildren:true},
+  PlaceMultiple:{_class:'CSmartPropElement_PlaceMultiple', defaults:{m_nCountMin:0,m_nCountMax:0,m_flSpacing:null,m_PlacementMode:null,m_bRandomizeOrder:null}, hasChildren:true},
+  PickOne:{_class:'CSmartPropElement_PickOne', defaults:{m_SelectionMode:'RANDOM',m_SpecificChildIndex:0,m_OutputChoiceVariableName:'',m_bConfigurable:false,m_vHandleOffset:null,m_HandleColor:null,m_HandleSize:32,m_HandleShape:null}, hasChildren:true},
+  FitOnLine:{_class:'CSmartPropElement_FitOnLine', defaults:{m_vStart:null,m_vEnd:null,m_PointSpace:'ELEMENT',m_bOrientAlongLine:false,m_vUpDirection:null,m_UpDirectionSpace:'WORLD',m_bPrioritizeUp:false,m_nScaleMode:'NONE',m_nPickMode:'SEQUENCE'}, hasChildren:true},
+  ModifyState:{_class:'CSmartPropElement_ModifyState', defaults:{}, hasChildren:false},
+  BendDeformer:{_class:'CSmartPropElement_BendDeformer', defaults:{m_bDeformationEnabled:true,m_vSize:null,m_vOrigin:null,m_vAngles:null,m_flBendAngle:null,m_flBendPoint:null,m_flBendRadius:null}, hasChildren:false},
+  ModelEntity:{_class:'CSmartPropElement_ModelEntity', defaults:{m_sModelName:'',m_vModelScale:null,m_MaterialGroupName:null,m_bDetailObject:false,m_bRigidDeformation:false,m_nLodLevel:-1,m_DetailObjectFadeLevel:'MEDIUM'}, hasChildren:false},
+  PropPhysics:{_class:'CSmartPropElement_PropPhysics', defaults:{m_sModelName:'',m_vModelScale:null,m_MaterialGroupName:null,m_flMass:50.0,m_bStartAsleep:false,m_nHealth:100,m_bEnableMotion:true,m_sPhysicsType:'normal'}, hasChildren:false},
+  PropDynamic:{_class:'CSmartPropElement_PropDynamic', defaults:{m_sModelName:'',m_sAnimationSequence:'',m_sDefaultAnimation:'',m_vModelScale:null,m_MaterialGroupName:null}, hasChildren:false},
+  MidpointDeformer:{_class:'CSmartPropElement_MidpointDeformer', defaults:{m_bDeformationEnabled:true,m_vStart:null,m_vEnd:null,m_fRadius:50.0,m_bContinuousSpline:true,m_vOffset:null,m_vAngles:null,m_vScale:null,m_fFalloff:0.5,m_OutputVariable:''}, hasChildren:false},
+  Layout2DGrid:{_class:'CSmartPropElement_Layout2DGrid', defaults:{m_flWidth:512.0,m_flLength:512.0,m_bVerticalLength:false,m_GridArrangement:'SEGMENT',m_GridOriginMode:'CENTER',m_nCountW:4,m_nCountL:4,m_flSpacingWidth:128.0,m_flSpacingLength:128.0,m_bAlternateShift:false,m_flAlternateShiftWidth:0.0,m_flAlternateShiftLength:0.0}, hasChildren:true}
+};
+// Which elements can have children
+const CHILD_ELEMENTS = new Set(['CSmartPropElement_Group','CSmartPropElement_PlaceOnPath','CSmartPropElement_PlaceInSphere','CSmartPropElement_PlaceMultiple','CSmartPropElement_PickOne','CSmartPropElement_FitOnLine','CSmartPropElement_Layout2DGrid','CSmartPropElement_BendDeformer','CSmartPropElement_MidpointDeformer']);
+
+const OPERATOR_DEFS = {
+  Rotate:{_class:'CSmartPropOperation_Rotate', defaults:{m_vRotation:{m_Components:[0,0,0]}}},
+  Scale:{_class:'CSmartPropOperation_Scale', defaults:{m_flScale:1}},
+  Translate:{_class:'CSmartPropOperation_Translate', defaults:{m_vPosition:{m_Components:[0,0,0]}}},
+  SetTintColor:{_class:'CSmartPropOperation_SetTintColor', defaults:{m_Mode:'MULTIPLY_OBJECT',m_ColorChoices:[]}},
+  RandomOffset:{_class:'CSmartPropOperation_RandomOffset', defaults:{m_vRandomPositionMin:{m_Components:[0,0,0]},m_vRandomPositionMax:{m_Components:[0,0,0]}}},
+  RandomScale:{_class:'CSmartPropOperation_RandomScale', defaults:{m_flRandomScaleMin:0,m_flRandomScaleMax:0}},
+  RandomRotation:{_class:'CSmartPropOperation_RandomRotation', defaults:{m_vRandomRotationMin:{m_Components:[0,0,0]},m_vRandomRotationMax:{m_Components:[0,0,0]}}},
+  CreateSizer:{_class:'CSmartPropOperation_CreateSizer', defaults:{}},
+  CreateRotator:{_class:'CSmartPropOperation_CreateRotator', defaults:{}},
+  CreateLocator:{_class:'CSmartPropOperation_CreateLocator', defaults:{}},
+  RestoreState:{_class:'CSmartPropOperation_RestoreState', defaults:{m_bDiscardIfUknown:true}},
+  TraceInDirection:{_class:'CSmartPropOperation_TraceInDirection', defaults:{m_DirectionSpace:'WORLD',m_flSurfaceUpInfluence:1,m_nNoHitResult:'NOTHING',m_flOriginOffset:-500,m_flTraceLength:500}},
+  SaveState:{_class:'CSmartPropOperation_SaveState', defaults:{m_StateName:'State'}},
+  SetVariable:{_class:'CSmartPropOperation_SetVariable', defaults:{m_VariableValue:{m_TargetName:null,m_DataType:null,m_Value:null}}},
+  RandomRotationSnapped:{_class:'CSmartPropOperation_RandomRotationSnapped', defaults:{m_flSnapIncrement:45.0,m_RotationAxes:'Z'}},
+  Comment:{_class:'Hammer5Tools_Comment', defaults:{m_Comment:null}}
+};
+
+const FILTER_DEFS = {
+  Expression:{_class:'CSmartPropFilter_Expression', defaults:{m_Expression:''}},
+  Probability:{_class:'CSmartPropFilter_Probability', defaults:{m_flProbability:1}},
+  SurfaceAngle:{_class:'CSmartPropFilter_SurfaceAngle', defaults:{m_flSurfaceSlopeMin:0,m_flSurfaceSlopeMax:0}},
+  SurfaceProperties:{_class:'CSmartPropFilter_SurfaceProperties', defaults:{m_AllowedSurfaceProperties:[],m_DisallowedSurfaceProperties:[]}},
+  VariableValue:{_class:'CSmartPropFilter_VariableValue', defaults:{m_VariableComparison:{m_Name:'',m_Value:0,m_Comparison:'EQUAL'}}}
+};
+
+const SELCRITERIA_DEFS = {
+  EndCap:{_class:'CSmartPropSelectionCriteria_EndCap', defaults:{m_bStart:false,m_bEnd:false}},
+  ChoiceWeight:{_class:'CSmartPropSelectionCriteria_ChoiceWeight', defaults:{m_flWeight:0}},
+  IsValid:{_class:'CSmartPropSelectionCriteria_IsValid', defaults:{}},
+  LinearLength:{_class:'CSmartPropSelectionCriteria_LinearLength', defaults:{m_flLength:0,m_bAllowScale:false,m_flMinLength:0,m_flMaxLength:0}},
+  PathPosition:{_class:'CSmartPropSelectionCriteria_PathPosition', defaults:{m_PlaceAtPositions:'ALL',m_nPlaceEveryNthPosition:0,m_nNthPositionIndexOffset:0,m_bAllowAtStart:false,m_bAllowAtEnd:false}},
+  Comment:{_class:'Hammer5Tools_Comment', defaults:{m_Comment:null}}
+};
+
+const VARIABLE_TYPES = ['Bool','Int','Float','String','Vector2D','Vector3D','Vector4D','Color','Angles','Model','MaterialGroup','ApplyColorMode','CoordinateSpace','Direction','DistributionMode','RadiusPlacementMode','ChoiceSelectionMode','TraceNoHit','ScaleMode','PickMode','GridPlacementMode','GridOriginMode','PathPositions'];
+
+// Property display order per class
+const PROP_MAP = {
+  FitOnLine:['m_nReferenceID','m_bEnabled','m_vStart','m_vEnd','m_PointSpace','m_bOrientAlongLine','m_vUpDirection','m_UpDirectionSpace','m_bPrioritizeUp','m_nScaleMode','m_nPickMode'],
+  PickOne:['m_nReferenceID','m_bEnabled','m_SelectionMode','m_SpecificChildIndex','m_OutputChoiceVariableName','m_bConfigurable','m_vHandleOffset','m_HandleColor','m_HandleSize','m_HandleShape'],
+  PlaceInSphere:['m_nReferenceID','m_bEnabled','m_nCountMin','m_nCountMax','m_flPositionRadiusInner','m_flPositionRadiusOuter','m_flRandomness','m_bAlignOrientation','m_PlacementMode','m_DistributionMode','m_vAlignDirection','m_vPlaneUpDirection'],
+  PlaceOnPath:['m_nReferenceID','m_bEnabled','m_PathName','m_vPathOffset','m_flOffsetAlongPath','m_PathSpace','m_flSpacing','m_SpacingSpace','m_bContinuousSpline','m_DefaultPath','m_bUseFixedUpDirection','m_bUseProjectedDistance','m_UpDirectionSpace','m_vUpDirection'],
+  Model:['m_nReferenceID','m_bEnabled','m_sModelName','m_bForceStatic','m_vModelScale','m_MaterialGroupName','m_bDetailObject','m_bRigidDeformation','m_nLodLevel','m_DetailObjectFadeLevel'],
+  SmartProp:['m_nReferenceID','m_bEnabled','m_sSmartProp','m_vModelScale'],
+  PlaceMultiple:['m_nReferenceID','m_bEnabled','m_nCountMin','m_nCountMax','m_flSpacing','m_PlacementMode','m_bRandomizeOrder'],
+  Group:['m_nReferenceID','m_bEnabled'],
+  ModifyState:['m_nReferenceID','m_bEnabled'],
+  BendDeformer:['m_nReferenceID','m_bEnabled','m_bDeformationEnabled','m_vSize','m_vOrigin','m_vAngles','m_flBendAngle','m_flBendPoint','m_flBendRadius'],
+  ModelEntity:['m_nReferenceID','m_bEnabled','m_sModelName','m_vModelScale','m_MaterialGroupName','m_bDetailObject','m_bRigidDeformation','m_nLodLevel','m_DetailObjectFadeLevel'],
+  PropPhysics:['m_nReferenceID','m_bEnabled','m_sModelName','m_vModelScale','m_MaterialGroupName','m_flMass','m_bStartAsleep','m_nHealth','m_bEnableMotion'],
+  PropDynamic:['m_nReferenceID','m_bEnabled','m_sModelName','m_sAnimationSequence','m_sDefaultAnimation','m_vModelScale','m_MaterialGroupName'],
+  MidpointDeformer:['m_nReferenceID','m_bEnabled','m_bDeformationEnabled','m_vStart','m_vEnd','m_fRadius','m_bContinuousSpline','m_vOffset','m_vAngles','m_vScale','m_fFalloff','m_OutputVariable'],
+  Layout2DGrid:['m_nReferenceID','m_bEnabled','m_flWidth','m_flLength','m_bVerticalLength','m_GridArrangement','m_GridOriginMode','m_nCountW','m_nCountL','m_flSpacingWidth','m_flSpacingLength','m_bAlternateShift','m_flAlternateShiftWidth','m_flAlternateShiftLength'],
+  CreateSizer:['m_bEnabled','m_flInitialMinX','m_flInitialMaxX','m_flConstraintMinX','m_flConstraintMaxX','m_OutputVariableMinX','m_OutputVariableMaxX','m_flInitialMinY','m_flInitialMaxY','m_flConstraintMinY','m_flConstraintMaxY','m_OutputVariableMinY','m_OutputVariableMaxY','m_flInitialMinZ','m_flInitialMaxZ','m_flConstraintMinZ','m_flConstraintMaxZ','m_OutputVariableMinZ','m_OutputVariableMaxZ'],
+  CreateRotator:['m_bEnabled','m_vRotationAxis','m_CoordinateSpace','m_flDisplayRadius','m_bApplyToCurrentTransform','m_OutputVariable','m_flSnappingIncrement','m_bEnforceLimits','m_flMinAngle','m_flMaxAngle'],
+  CreateLocator:['m_bEnabled','m_flDisplayScale','m_bAllowScale'],
+  RestoreState:['m_bEnabled','m_StateName','m_bDiscardIfUknown'],
+  RandomRotation:['m_bEnabled','m_vRandomRotationMin','m_vRandomRotationMax'],
+  RandomOffset:['m_bEnabled','m_vRandomPositionMin','m_vRandomPositionMax'],
+  RandomScale:['m_bEnabled','m_flRandomScaleMin','m_flRandomScaleMax'],
+  Scale:['m_bEnabled','m_flScale'],
+  Rotate:['m_bEnabled','m_vRotation'],
+  Translate:['m_bEnabled','m_vPosition'],
+  SetTintColor:['m_bEnabled','m_Mode','m_ColorChoices','m_SelectionMode','m_ColorSelection'],
+  SetVariable:['m_bEnabled','m_VariableValue'],
+  SurfaceProperties:['m_bEnabled','m_DisallowedSurfaceProperties','m_AllowedSurfaceProperties'],
+  VariableValue:['m_bEnabled','m_VariableComparison'],
+  SurfaceAngle:['m_bEnabled','m_flSurfaceSlopeMin','m_flSurfaceSlopeMax'],
+  PathPosition:['m_bEnabled','m_PlaceAtPositions','m_nPlaceEveryNthPosition','m_nNthPositionIndexOffset','m_bAllowAtStart','m_bAllowAtEnd'],
+  EndCap:['m_bEnabled','m_bStart','m_bEnd'],
+  LinearLength:['m_bEnabled','m_bAllowScale','m_flLength','m_flMinLength','m_flMaxLength'],
+  ChoiceWeight:['m_bEnabled','m_flWeight'],
+  TraceInDirection:['m_bEnabled','m_DirectionSpace','m_nNoHitResult','m_flSurfaceUpInfluence','m_flOriginOffset','m_flTraceLength'],
+  SaveState:['m_bEnabled','m_StateName'],
+  RandomRotationSnapped:['m_bEnabled','m_vMinAngles','m_vMaxAngles','m_flSnapIncrement','m_RotationAxes'],
+  Comment:['m_Comment'],
+  Expression:['m_bEnabled','m_Expression'],
+  Probability:['m_bEnabled','m_flProbability']
+};
+
+// Combobox options
+const COMBO_OPTIONS = {
+  m_nPickMode:['LARGEST_FIRST','RANDOM','ALL_IN_ORDER','SEQUENCE'],
+  m_nScaleMode:['NONE','SCALE_END_TO_FIT','SCALE_EQUALLY','SCALE_MAXIMAIZE'],
+  m_CoordinateSpace:['ELEMENT','OBJECT','WORLD'],
+  m_DirectionSpace:['ELEMENT','OBJECT','WORLD'],
+  m_GridArrangement:['SEGMENT','FILL'],
+  m_GridOriginMode:['CENTER','CORNER'],
+  m_nNoHitResult:['NOTHING','DISCARD','MOVE_TO_START','MOVE_TO_END'],
+  m_SelectionMode:['RANDOM','FIRST','SPECIFIC'],
+  m_PlacementMode:['SPHERE','CIRCLE','RING'],
+  m_DistributionMode:['RANDOM','UNIFORM'],
+  m_SpacingSpace:['ELEMENT','OBJECT','WORLD'],
+  m_DetailObjectFadeLevel:['NEAR','MEDIUM','FAR','ALWAYS'],
+  m_RotationAxes:['X','Y','Z','XY','XZ','YZ','XYZ'],
+  m_HandleShape:['SQUARE','DIAMOND','CIRCLE'],
+  m_PointSpace:['ELEMENT','OBJECT','WORLD'],
+  m_PathSpace:['ELEMENT','OBJECT','WORLD'],
+  m_UpDirectionSpace:['ELEMENT','OBJECT','WORLD'],
+  m_PlaceAtPositions:['ALL','NTH','START_AND_END','CONTROL_POINTS'],
+  m_Mode:['MULTIPLY_OBJECT','MULTIPLY_CURRENT','REPLACE'],
+  m_ApplyColorMode:['MULTIPLY_OBJECT','MULTIPLY_CURRENT','REPLACE'],
+  m_Comparison:['EQUAL','NOT_EQUAL','LESS_THAN','LESS_OR_EQUAL','GREATER_THAN','GREATER_OR_EQUAL'],
+  m_sPhysicsType:['normal','multiplayer']
+};
+
+const ELEMENT_ICONS = {
+  Group:'📁',Model:'🧊',SmartProp:'🔗',PlaceOnPath:'🛤️',PlaceInSphere:'⚪',PlaceMultiple:'⊞',PickOne:'🎲',FitOnLine:'📏',ModifyState:'🔄',BendDeformer:'🌀',ModelEntity:'🧊',PropPhysics:'⚡',PropDynamic:'🎬',MidpointDeformer:'🌀',Layout2DGrid:'⊞'
+};
+
+// ===== UTILITY =====
+function prettify(name) {
+  let s = name.replace(/^m_fl|^m_n|^m_b|^m_s|^m_v|^m_f|^m_/, '');
+  return s.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+function getClassName(node) {
+  if (!node || !node._class) return '';
+  return node._class.split('_').pop() || node._class.replace(/^CSmartProp(Element|Operation|Filter|SelectionCriteria|Variable)_/, '');
+}
+
+function getShortClass(cls) {
+  if (!cls) return '';
+  const parts = cls.split('_');
+  return parts[parts.length - 1] || cls;
+}
+
+function getElementIcon(shortClass) {
+  return ELEMENT_ICONS[shortClass] || '📦';
+}
+
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+function genId() { return nextElementId++; }
+
+function recalcMaxId(node) {
+  if (!node) return;
+  if (node.m_nElementID != null && node.m_nElementID >= nextElementId) nextElementId = node.m_nElementID + 1;
+  if (node.m_Children) node.m_Children.forEach(recalcMaxId);
+  if (node.m_Modifiers) node.m_Modifiers.forEach(recalcMaxId);
+  if (node.m_SelectionCriteria) node.m_SelectionCriteria.forEach(recalcMaxId);
+}
+
+function recalcAllIds() {
+  nextElementId = 1;
+  doc.m_Children.forEach(recalcMaxId);
+  doc.m_Variables.forEach(recalcMaxId);
+}
+
+// ===== UNDO/REDO =====
+function pushUndo() {
+  undoStack.push(JSON.stringify(doc));
+  if (undoStack.length > maxUndo) undoStack.shift();
+  redoStack = [];
+}
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(JSON.stringify(doc));
+  doc = JSON.parse(undoStack.pop());
+  recalcAllIds();
+  renderAll();
+}
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(JSON.stringify(doc));
+  doc = JSON.parse(redoStack.pop());
+  recalcAllIds();
+  renderAll();
+}
+
+// ===== NODE RESOLUTION =====
+// Path format: "children.0" or "children.0.m_Modifiers.1" or "variables.2"
+function resolveNode(path) {
+  if (!path) return null;
+  const parts = path.split('.');
+  let current = doc;
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p === 'children') { current = current.m_Children; }
+    else if (p === 'variables') { current = current.m_Variables; }
+    else if (p === 'm_Modifiers' || p === 'm_SelectionCriteria' || p === 'm_Children') {
+      current = current[p];
+    }
+    else {
+      const idx = parseInt(p);
+      if (!Array.isArray(current) || idx < 0 || idx >= current.length) return null;
+      current = current[idx];
+    }
+  }
+  return current;
+}
+
+function resolveParentArray(path) {
+  if (!path) return null;
+  const parts = path.split('.');
+  const idx = parseInt(parts[parts.length - 1]);
+  const parentPath = parts.slice(0, -1).join('.');
+  let arr;
+  if (parentPath === 'children') arr = doc.m_Children;
+  else if (parentPath === 'variables') arr = doc.m_Variables;
+  else arr = resolveNode(parentPath);
+  if (!Array.isArray(arr)) return null;
+  return { arr, idx };
+}
+
+// ===== CREATE NODES =====
+function createElement(typeName) {
+  const def = ELEMENT_DEFS[typeName];
+  if (!def) return null;
+  const node = { _class: def._class, m_nElementID: genId(), ...deepClone(def.defaults), m_Modifiers: [], m_SelectionCriteria: [] };
+  if (def.hasChildren || CHILD_ELEMENTS.has(def._class)) node.m_Children = [];
+  if (!('m_bEnabled' in node)) node.m_bEnabled = true;
+  return node;
+}
+
+function createOperator(typeName) {
+  const def = OPERATOR_DEFS[typeName];
+  if (!def) return null;
+  return { _class: def._class, m_nElementID: genId(), m_bEnabled: true, ...deepClone(def.defaults) };
+}
+
+function createFilter(typeName) {
+  const def = FILTER_DEFS[typeName];
+  if (!def) return null;
+  return { _class: def._class, m_nElementID: genId(), m_bEnabled: true, ...deepClone(def.defaults) };
+}
+
+function createSelCriteria(typeName) {
+  const def = SELCRITERIA_DEFS[typeName];
+  if (!def) return null;
+  return { _class: def._class, m_nElementID: genId(), m_bEnabled: true, ...deepClone(def.defaults) };
+}
+
+function createVariable(typeName) {
+  const prefix = 'CSmartPropVariable_';
+  return { _class: prefix + typeName, m_VariableName: 'new_variable', m_bExposeAsParameter: true, m_DefaultValue: getDefaultForVarType(typeName), m_nElementID: genId(), m_ParameterName: 'New Variable' };
+}
+
+function getDefaultForVarType(t) {
+  if (t === 'Bool') return false;
+  if (t === 'Int') return 0;
+  if (t === 'Float') return 0;
+  if (t === 'String' || t === 'Model' || t === 'MaterialGroup') return '';
+  if (t === 'Vector2D') return [0, 0];
+  if (t === 'Vector3D' || t === 'Color' || t === 'Angles') return [0, 0, 0];
+  if (t === 'Vector4D') return [0, 0, 0, 0];
+  return '';
+}
+
+// ===== TREE RENDERING =====
+function renderAll() {
+  renderTree();
+  renderProperties();
+  updatePreview();
+  updateStatus();
+}
+
+function renderTree() {
+  const tree = document.getElementById('tree');
+  tree.innerHTML = '';
+  // Children section
+  const childHeader = createTreeSection('children', '📂', 'Children', doc.m_Children.length);
+  tree.appendChild(childHeader.row);
+  if (expandedNodes.has('children')) {
+    doc.m_Children.forEach((child, i) => {
+      renderTreeNode(tree, child, `children.${i}`, 1);
+    });
+  }
+  // Variables section
+  const varHeader = createTreeSection('variables', '📋', 'Variables', doc.m_Variables.length);
+  tree.appendChild(varHeader.row);
+  if (expandedNodes.has('variables')) {
+    doc.m_Variables.forEach((v, i) => {
+      const row = document.createElement('div');
+      row.className = 'tree-item-row' + (selectedNodePath === `variables.${i}` ? ' selected' : '');
+      row.style.paddingLeft = (1 * 16 + 8) + 'px';
+      row.dataset.path = `variables.${i}`;
+      row.draggable = true;
+      const varType = getShortClass(v._class);
+      row.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon">🔧</span><span class="tree-label">${v.m_VariableName || 'unnamed'}</span><span class="tree-badge" style="background:rgba(137,180,250,.1);color:var(--accent);font-size:9px">${varType}</span>`;
+      row.addEventListener('click', (e) => { e.stopPropagation(); selectNode(`variables.${i}`); });
+      row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showVariableContextMenu(e, `variables.${i}`); });
+      setupDragDrop(row, `variables.${i}`);
+      tree.appendChild(row);
+    });
+  }
+}
+
+function createTreeSection(id, icon, label, count) {
+  const row = document.createElement('div');
+  row.className = 'tree-item-row';
+  row.style.paddingLeft = '8px';
+  row.style.fontWeight = '600';
+  row.style.color = 'var(--text-secondary)';
+  const expanded = expandedNodes.has(id);
+  row.innerHTML = `<span class="tree-toggle ${expanded ? 'expanded' : ''}" data-toggle="${id}">▶</span><span class="tree-icon">${icon}</span><span class="tree-label">${label} (${count})</span>`;
+  row.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleExpand(id);
+  });
+  return { row };
+}
+
+function renderTreeNode(container, node, path, depth) {
+  const shortClass = getShortClass(node._class);
+  const hasChildren = node.m_Children && node.m_Children.length > 0;
+  const hasMods = node.m_Modifiers && node.m_Modifiers.length > 0;
+  const hasCriteria = node.m_SelectionCriteria && node.m_SelectionCriteria.length > 0;
+  const hasSubItems = hasChildren || hasMods || hasCriteria || (node.m_Children !== undefined);
+  const expanded = expandedNodes.has(path);
+  const label = node.m_sLabel || shortClass;
+  const icon = getElementIcon(shortClass);
+  const isSelected = selectedNodePath === path;
+
+  const row = document.createElement('div');
+  row.className = 'tree-item-row' + (isSelected ? ' selected' : '');
+  row.style.paddingLeft = (depth * 16 + 8) + 'px';
+  row.dataset.path = path;
+  row.draggable = true;
+  row.innerHTML = `<span class="tree-toggle ${hasSubItems ? (expanded ? 'expanded' : '') : 'empty'}" data-toggle="${path}">▶</span><span class="tree-icon">${icon}</span><span class="tree-label">${escHtml(label)}</span>${label !== shortClass ? `<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${shortClass}</span>` : ''}`;
+
+  row.addEventListener('click', (e) => { e.stopPropagation(); selectNode(path); });
+  row.querySelector('.tree-toggle').addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(path); });
+  row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showElementContextMenu(e, path); });
+  row.addEventListener('dblclick', (e) => { e.stopPropagation(); const freshRow = document.querySelector(`[data-path="${path}"]`); if (freshRow) startRename(path, freshRow); });
+  setupDragDrop(row, path);
+  container.appendChild(row);
+
+  if (expanded) {
+    // Modifiers
+    if (node.m_Modifiers) {
+      if (node.m_Modifiers.length > 0 || true) { // always show section
+        const modSectionId = path + '.m_Modifiers';
+        const modExpanded = expandedNodes.has(modSectionId);
+        const modRow = document.createElement('div');
+        modRow.className = 'tree-item-row';
+        modRow.style.paddingLeft = ((depth + 1) * 16 + 8) + 'px';
+        modRow.style.color = 'var(--mauve)';
+        modRow.style.fontSize = '11px';
+        modRow.innerHTML = `<span class="tree-toggle ${node.m_Modifiers.length > 0 ? (modExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${modSectionId}">▶</span><span class="tree-icon" style="font-size:11px">⚙️</span><span class="tree-label">Modifiers (${node.m_Modifiers.length})</span>`;
+        modRow.addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(modSectionId); });
+        modRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showAddModifierMenu(e, path); });
+        container.appendChild(modRow);
+        if (modExpanded) {
+          node.m_Modifiers.forEach((mod, mi) => {
+            const modPath = `${path}.m_Modifiers.${mi}`;
+            const modClass = getShortClass(mod._class);
+            const mRow = document.createElement('div');
+            mRow.className = 'tree-item-row' + (selectedNodePath === modPath ? ' selected' : '');
+            mRow.style.paddingLeft = ((depth + 2) * 16 + 8) + 'px';
+            mRow.dataset.path = modPath;
+            mRow.draggable = true;
+            mRow.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon" style="font-size:11px">⚙️</span><span class="tree-label">${modClass}</span><span class="tree-badge modifier">mod</span>`;
+            mRow.addEventListener('click', (e) => { e.stopPropagation(); selectNode(modPath); });
+            mRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showModifierContextMenu(e, modPath, path); });
+            setupDragDrop(mRow, modPath);
+            container.appendChild(mRow);
+          });
+        }
+      }
+    }
+    // Selection Criteria
+    if (node.m_SelectionCriteria) {
+      const scSectionId = path + '.m_SelectionCriteria';
+      const scExpanded = expandedNodes.has(scSectionId);
+      const scRow = document.createElement('div');
+      scRow.className = 'tree-item-row';
+      scRow.style.paddingLeft = ((depth + 1) * 16 + 8) + 'px';
+      scRow.style.color = 'var(--yellow)';
+      scRow.style.fontSize = '11px';
+      scRow.innerHTML = `<span class="tree-toggle ${node.m_SelectionCriteria.length > 0 ? (scExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${scSectionId}">▶</span><span class="tree-icon" style="font-size:11px">🎯</span><span class="tree-label">Selection Criteria (${node.m_SelectionCriteria.length})</span>`;
+      scRow.addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(scSectionId); });
+      scRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showAddCriteriaMenu(e, path); });
+      container.appendChild(scRow);
+      if (scExpanded) {
+        node.m_SelectionCriteria.forEach((sc, si) => {
+          const scPath = `${path}.m_SelectionCriteria.${si}`;
+          const scClass = getShortClass(sc._class);
+          const sRow = document.createElement('div');
+          sRow.className = 'tree-item-row' + (selectedNodePath === scPath ? ' selected' : '');
+          sRow.style.paddingLeft = ((depth + 2) * 16 + 8) + 'px';
+          sRow.dataset.path = scPath;
+          sRow.draggable = true;
+          sRow.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon" style="font-size:11px">🎯</span><span class="tree-label">${scClass}</span><span class="tree-badge criteria">crit</span>`;
+          sRow.addEventListener('click', (e) => { e.stopPropagation(); selectNode(scPath); });
+          sRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showModifierContextMenu(e, scPath, path); });
+          setupDragDrop(sRow, scPath);
+          container.appendChild(sRow);
+        });
+      }
+    }
+    // Children
+    if (node.m_Children) {
+      node.m_Children.forEach((child, ci) => {
+        renderTreeNode(container, child, `${path}.m_Children.${ci}`, depth + 1);
+      });
+    }
+  }
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toggleExpand(id) {
+  if (expandedNodes.has(id)) expandedNodes.delete(id);
+  else expandedNodes.add(id);
+  renderTree();
+}
+
+function collapseAllTree() { expandedNodes.clear(); expandedNodes.add('children'); expandedNodes.add('variables'); renderTree(); }
+function expandAllTree() {
+  expandedNodes.add('children'); expandedNodes.add('variables');
+  function expandAll(node, path) {
+    expandedNodes.add(path);
+    if (node.m_Modifiers && node.m_Modifiers.length) expandedNodes.add(path + '.m_Modifiers');
+    if (node.m_SelectionCriteria && node.m_SelectionCriteria.length) expandedNodes.add(path + '.m_SelectionCriteria');
+    if (node.m_Children) node.m_Children.forEach((c, i) => expandAll(c, `${path}.m_Children.${i}`));
+  }
+  doc.m_Children.forEach((c, i) => expandAll(c, `children.${i}`));
+  renderTree();
+}
+
+function selectNode(path) {
+  selectedNodePath = path;
+  renderTree();
+  renderProperties();
+}
+
+// ===== DRAG & DROP =====
+let dragPath = null;
+function setupDragDrop(row, path) {
+  row.addEventListener('dragstart', (e) => {
+    dragPath = path;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', path);
+    row.style.opacity = '0.5';
+  });
+  row.addEventListener('dragend', () => { dragPath = null; row.style.opacity = ''; clearDragClasses(); });
+  row.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clearDragClasses();
+    const rect = row.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+    if (y < h * 0.25) row.classList.add('drag-over-above');
+    else if (y > h * 0.75) row.classList.add('drag-over-below');
+    else row.classList.add('drag-over-inside');
+  });
+  row.addEventListener('dragleave', () => { row.classList.remove('drag-over-above', 'drag-over-below', 'drag-over-inside'); });
+  row.addEventListener('drop', (e) => {
+    e.preventDefault();
+    clearDragClasses();
+    const srcPath = e.dataTransfer.getData('text/plain');
+    const dstPath = path;
+    if (!srcPath || srcPath === dstPath) return;
+    const rect = row.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const h = rect.height;
+    let position;
+    if (y < h * 0.25) position = 'above';
+    else if (y > h * 0.75) position = 'below';
+    else position = 'inside';
+    performDrop(srcPath, dstPath, position);
+  });
+}
+
+function clearDragClasses() {
+  document.querySelectorAll('.drag-over-above,.drag-over-below,.drag-over-inside').forEach(el => {
+    el.classList.remove('drag-over-above', 'drag-over-below', 'drag-over-inside');
+  });
+}
+
+function performDrop(srcPath, dstPath, position) {
+  // Only allow reorder within same parent array, or reparent into a compatible container
+  const srcParent = resolveParentArray(srcPath);
+  if (!srcParent) return;
+  pushUndo();
+  const node = deepClone(srcParent.arr[srcParent.idx]);
+  srcParent.arr.splice(srcParent.idx, 1);
+
+  // Fix paths after removal
+  if (position === 'inside') {
+    const dstNode = resolveNode(dstPath);
+    if (!dstNode) { renderAll(); return; }
+    // Determine which array to add to
+    if (srcPath.includes('.m_Modifiers.') && dstNode.m_Modifiers) {
+      dstNode.m_Modifiers.push(node);
+    } else if (srcPath.includes('.m_SelectionCriteria.') && dstNode.m_SelectionCriteria) {
+      dstNode.m_SelectionCriteria.push(node);
+    } else if (dstNode.m_Children !== undefined) {
+      dstNode.m_Children.push(node);
+      expandedNodes.add(dstPath);
+    } else {
+      // Can't drop here, put it back
+      srcParent.arr.splice(srcParent.idx, 0, node);
+    }
+  } else {
+    // Recalculate dstParent after removal
+    const dstParent = resolveParentArray(dstPath);
+    if (!dstParent) { srcParent.arr.splice(srcParent.idx, 0, node); renderAll(); return; }
+    const insertIdx = position === 'above' ? dstParent.idx : dstParent.idx + 1;
+    dstParent.arr.splice(insertIdx, 0, node);
+  }
+  renderAll();
+}
+
+// ===== CONTEXT MENUS =====
+let activeMenu = null;
+function closeMenus() {
+  if (activeMenu) { activeMenu.remove(); activeMenu = null; }
+}
+document.addEventListener('mousedown', (e) => {
+  if (activeMenu && !activeMenu.contains(e.target)) closeMenus();
+});
+
+function showMenu(x, y, items) {
+  closeMenus();
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  items.forEach(item => {
+    if (item === '---') { const sep = document.createElement('div'); sep.className = 'ctx-sep'; menu.appendChild(sep); return; }
+    if (item.header) { const h = document.createElement('div'); h.className = 'ctx-header'; h.textContent = item.header; menu.appendChild(h); return; }
+    const el = document.createElement('div');
+    el.className = 'ctx-item' + (item.danger ? ' danger' : '');
+    el.innerHTML = `<span>${item.label}</span>${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}`;
+    el.addEventListener('click', (e) => { e.stopPropagation(); closeMenus(); item.action(); });
+    menu.appendChild(el);
+  });
+  document.body.appendChild(menu);
+  // Position
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  if (x + mw > window.innerWidth) x = window.innerWidth - mw - 4;
+  if (y + mh > window.innerHeight) y = window.innerHeight - mh - 4;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  activeMenu = menu;
+}
+
+function showElementContextMenu(e, path) {
+  const node = resolveNode(path);
+  if (!node) return;
+  const canHaveChildren = node.m_Children !== undefined;
+  const items = [];
+  if (canHaveChildren) {
+    items.push({ label: '➕ Add Child Element...', action: () => showElementPicker(e.clientX, e.clientY, (typeName) => { pushUndo(); node.m_Children.push(createElement(typeName)); expandedNodes.add(path); renderAll(); }) });
+  }
+  items.push({ label: '⚙️ Add Modifier...', action: () => showOperatorPicker(e.clientX, e.clientY, path) });
+  items.push({ label: '🎯 Add Selection Criteria...', action: () => showCriteriaPicker(e.clientX, e.clientY, path) });
+  items.push('---');
+  items.push({ label: '📋 Copy', shortcut: 'Ctrl+C', action: () => copyNode(path) });
+  items.push({ label: '✂️ Cut', shortcut: 'Ctrl+X', action: () => cutNode(path) });
+  if (clipboard) items.push({ label: '📌 Paste', shortcut: 'Ctrl+V', action: () => pasteNode(path) });
+  items.push('---');
+  items.push({ label: '📄 Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) });
+  items.push({ label: '✏️ Rename', action: () => { const row = document.querySelector(`[data-path="${path}"]`); if (row) startRename(path, row); } });
+  items.push('---');
+  items.push({ label: '⬆️ Move Up', action: () => moveNode(path, -1) });
+  items.push({ label: '⬇️ Move Down', action: () => moveNode(path, 1) });
+  items.push('---');
+  items.push({ label: '🗑️ Delete', shortcut: 'Del', danger: true, action: () => deleteNode(path) });
+  showMenu(e.clientX, e.clientY, items);
+}
+
+function showVariableContextMenu(e, path) {
+  const items = [
+    { label: '📄 Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) },
+    '---',
+    { label: '⬆️ Move Up', action: () => moveNode(path, -1) },
+    { label: '⬇️ Move Down', action: () => moveNode(path, 1) },
+    '---',
+    { label: '🗑️ Delete', shortcut: 'Del', danger: true, action: () => deleteNode(path) }
+  ];
+  showMenu(e.clientX, e.clientY, items);
+}
+
+function showModifierContextMenu(e, modPath, parentPath) {
+  const items = [
+    { label: '📋 Copy', action: () => copyNode(modPath) },
+    { label: '📄 Duplicate', action: () => duplicateNode(modPath) },
+    '---',
+    { label: '⬆️ Move Up', action: () => moveNode(modPath, -1) },
+    { label: '⬇️ Move Down', action: () => moveNode(modPath, 1) },
+    '---',
+    { label: '🗑️ Delete', danger: true, action: () => deleteNode(modPath) }
+  ];
+  showMenu(e.clientX, e.clientY, items);
+}
+
+function showAddModifierMenu(e, parentPath) {
+  const items = [
+    { header: 'Add Modifier' },
+    ...Object.keys(OPERATOR_DEFS).map(name => ({
+      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+    })),
+    '---',
+    { header: 'Add Filter' },
+    ...Object.keys(FILTER_DEFS).map(name => ({
+      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_Modifiers) { node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+    }))
+  ];
+  showMenu(e.clientX, e.clientY, items);
+}
+
+function showAddCriteriaMenu(e, parentPath) {
+  const items = [
+    { header: 'Add Selection Criteria' },
+    ...Object.keys(SELCRITERIA_DEFS).map(name => ({
+      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node && node.m_SelectionCriteria) { node.m_SelectionCriteria.push(createSelCriteria(name)); expandedNodes.add(parentPath + '.m_SelectionCriteria'); renderAll(); } }
+    }))
+  ];
+  showMenu(e.clientX, e.clientY, items);
+}
+
+// ===== ELEMENT/OPERATOR PICKERS =====
+function showElementPicker(x, y, callback) {
+  const items = Object.keys(ELEMENT_DEFS).map(name => ({
+    label: `${getElementIcon(name)} ${name}`, action: () => callback(name)
+  }));
+  showMenu(x, y, [{ header: 'Add Element' }, ...items]);
+}
+
+function showOperatorPicker(x, y, parentPath) {
+  const items = [
+    { header: 'Modifiers' },
+    ...Object.keys(OPERATOR_DEFS).map(name => ({
+      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createOperator(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+    })),
+    '---',
+    { header: 'Filters' },
+    ...Object.keys(FILTER_DEFS).map(name => ({
+      label: name, action: () => { pushUndo(); const node = resolveNode(parentPath); if (node) { if (!node.m_Modifiers) node.m_Modifiers = []; node.m_Modifiers.push(createFilter(name)); expandedNodes.add(parentPath + '.m_Modifiers'); renderAll(); } }
+    }))
+  ];
+  showMenu(x, y, items);
+}
+
+function showCriteriaPicker(x, y, parentPath) {
+  showAddCriteriaMenu({ clientX: x, clientY: y }, parentPath);
+}
+
+// ===== NODE OPERATIONS =====
+function deleteNode(path) {
+  const pa = resolveParentArray(path);
+  if (!pa) return;
+  pushUndo();
+  pa.arr.splice(pa.idx, 1);
+  if (selectedNodePath === path) selectedNodePath = null;
+  renderAll();
+}
+
+function duplicateNode(path) {
+  const pa = resolveParentArray(path);
+  if (!pa) return;
+  pushUndo();
+  const clone = deepClone(pa.arr[pa.idx]);
+  // Reassign IDs
+  function reassignIds(n) {
+    if (n && typeof n === 'object') {
+      if ('m_nElementID' in n) n.m_nElementID = genId();
+      if (n.m_Children) n.m_Children.forEach(reassignIds);
+      if (n.m_Modifiers) n.m_Modifiers.forEach(reassignIds);
+      if (n.m_SelectionCriteria) n.m_SelectionCriteria.forEach(reassignIds);
+    }
+  }
+  reassignIds(clone);
+  if (clone.m_sLabel) clone.m_sLabel = clone.m_sLabel + '_copy';
+  pa.arr.splice(pa.idx + 1, 0, clone);
+  renderAll();
+}
+
+function moveNode(path, direction) {
+  const pa = resolveParentArray(path);
+  if (!pa) return;
+  const newIdx = pa.idx + direction;
+  if (newIdx < 0 || newIdx >= pa.arr.length) return;
+  pushUndo();
+  const item = pa.arr.splice(pa.idx, 1)[0];
+  pa.arr.splice(newIdx, 0, item);
+  // Update selectedNodePath to reflect new index
+  const parts = path.split('.');
+  parts[parts.length - 1] = String(newIdx);
+  selectedNodePath = parts.join('.');
+  renderAll();
+}
+
+function copyNode(path) {
+  const node = resolveNode(path);
+  if (node) clipboard = deepClone(node);
+}
+
+function cutNode(path) {
+  copyNode(path);
+  deleteNode(path);
+}
+
+function pasteNode(path) {
+  if (!clipboard) return;
+  const node = resolveNode(path);
+  if (!node) return;
+  pushUndo();
+  const clone = deepClone(clipboard);
+  function reassignIds(n) {
+    if (n && typeof n === 'object') {
+      if ('m_nElementID' in n) n.m_nElementID = genId();
+      if (n.m_Children) n.m_Children.forEach(reassignIds);
+      if (n.m_Modifiers) n.m_Modifiers.forEach(reassignIds);
+      if (n.m_SelectionCriteria) n.m_SelectionCriteria.forEach(reassignIds);
+    }
+  }
+  reassignIds(clone);
+  // Determine where to paste
+  if (clone._class && clone._class.includes('Operation') || clone._class && clone._class.includes('Filter')) {
+    if (node.m_Modifiers) { node.m_Modifiers.push(clone); expandedNodes.add(path + '.m_Modifiers'); }
+  } else if (clone._class && clone._class.includes('SelectionCriteria')) {
+    if (node.m_SelectionCriteria) { node.m_SelectionCriteria.push(clone); expandedNodes.add(path + '.m_SelectionCriteria'); }
+  } else if (node.m_Children !== undefined) {
+    node.m_Children.push(clone);
+    expandedNodes.add(path);
+  } else {
+    // Paste as sibling
+    const pa = resolveParentArray(path);
+    if (pa) pa.arr.splice(pa.idx + 1, 0, clone);
+  }
+  renderAll();
+}
+
+function startRename(path, row) {
+  const node = resolveNode(path);
+  if (!node) return;
+  const labelEl = row.querySelector('.tree-label');
+  if (!labelEl) return;
+  const current = node.m_sLabel || node.m_VariableName || getShortClass(node._class);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tree-label-input';
+  input.value = current;
+  labelEl.replaceWith(input);
+  input.focus();
+  input.select();
+  function finish() {
+    pushUndo();
+    const val = input.value.trim();
+    if (path.startsWith('variables')) {
+      node.m_VariableName = val || 'unnamed';
+    } else {
+      node.m_sLabel = val || undefined;
+    }
+    renderAll();
+  }
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { input.value = current; input.blur(); } });
+}
+
+// ===== SEARCH / FILTER =====
+function filterTree(query) {
+  const q = query.toLowerCase().trim();
+  const rows = document.querySelectorAll('#tree .tree-item-row');
+  if (!q) { rows.forEach(r => r.classList.remove('hidden-by-search')); return; }
+  rows.forEach(r => {
+    const text = r.textContent.toLowerCase();
+    if (text.includes(q)) r.classList.remove('hidden-by-search');
+    else r.classList.add('hidden-by-search');
+  });
+}
+
+// ===== PROPERTIES PANEL =====
+function showEmptyProps(container) {
+  container.innerHTML = `<div class="empty-state" id="propsEmpty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4"/></svg><div>Select an item to edit</div></div>`;
+}
+function renderProperties() {
+  const container = document.getElementById('propsContainer');
+  if (!selectedNodePath) { showEmptyProps(container); return; }
+  const node = resolveNode(selectedNodePath);
+  if (!node) { showEmptyProps(container); return; }
+  container.innerHTML = '';
+  const shortClass = getShortClass(node._class);
+
+  // Variable editing
+  if (selectedNodePath.startsWith('variables')) {
+    renderVariableProps(container, node, selectedNodePath);
+    return;
+  }
+
+  // Element/modifier/criteria properties
+  const propKeys = PROP_MAP[shortClass];
+  const isElement = selectedNodePath.match(/^children(\.\d+(.m_Children\.\d+)*)?$/);
+
+  // Section: Properties
+  const propsSection = createSection('Element Properties', true);
+  container.appendChild(propsSection.el);
+
+  if (propKeys) {
+    propKeys.forEach(key => {
+      if (key === 'm_nElementID' || key === 'm_sLabel' || key === 'm_sReferenceObjectID') return;
+      const val = node[key] !== undefined ? node[key] : null;
+      propsSection.body.appendChild(createPropertyWidget(key, val, (newVal) => {
+        pushUndo();
+        if (newVal === null || newVal === undefined) delete node[key];
+        else node[key] = newVal;
+        updatePreview();
+      }));
+    });
+  } else {
+    // Fallback: show all properties
+    Object.keys(node).forEach(key => {
+      if (key === '_class' || key === 'm_nElementID' || key === 'm_Children' || key === 'm_Modifiers' || key === 'm_SelectionCriteria' || key === 'm_sLabel') return;
+      const val = node[key];
+      propsSection.body.appendChild(createPropertyWidget(key, val, (newVal) => {
+        pushUndo();
+        if (newVal === null || newVal === undefined) delete node[key];
+        else node[key] = newVal;
+        updatePreview();
+      }));
+    });
+  }
+
+  // Modifiers section (only for elements)
+  if (isElement && node.m_Modifiers !== undefined) {
+    const modSection = createSection(`Modifiers (${node.m_Modifiers.length})`, true, () => {
+      showOperatorPicker(window.innerWidth / 2, window.innerHeight / 2, selectedNodePath);
+    });
+    container.appendChild(modSection.el);
+    node.m_Modifiers.forEach((mod, mi) => {
+      modSection.body.appendChild(createModifierFrame(mod, mi, selectedNodePath, 'm_Modifiers'));
+    });
+  }
+
+  // Selection Criteria section
+  if (isElement && node.m_SelectionCriteria !== undefined) {
+    const scSection = createSection(`Selection Criteria (${node.m_SelectionCriteria.length})`, true, () => {
+      showCriteriaPicker(window.innerWidth / 2, window.innerHeight / 2, selectedNodePath);
+    });
+    container.appendChild(scSection.el);
+    node.m_SelectionCriteria.forEach((sc, si) => {
+      scSection.body.appendChild(createModifierFrame(sc, si, selectedNodePath, 'm_SelectionCriteria'));
+    });
+  }
+}
+
+function renderVariableProps(container, node, path) {
+  const section = createSection('Variable Properties', true);
+  container.appendChild(section.el);
+
+  const varType = getShortClass(node._class);
+
+  // Variable name
+  section.body.appendChild(createPropertyWidget('m_VariableName', node.m_VariableName || '', (v) => { pushUndo(); node.m_VariableName = v; renderTree(); updatePreview(); }));
+  // Parameter name
+  section.body.appendChild(createPropertyWidget('m_ParameterName', node.m_ParameterName || '', (v) => { pushUndo(); node.m_ParameterName = v; updatePreview(); }));
+  // Expose as parameter
+  section.body.appendChild(createPropertyWidget('m_bExposeAsParameter', node.m_bExposeAsParameter !== false, (v) => { pushUndo(); node.m_bExposeAsParameter = v; updatePreview(); }));
+  // Default value - type depends on variable type
+  section.body.appendChild(createPropertyWidget('m_DefaultValue', node.m_DefaultValue, (v) => { pushUndo(); node.m_DefaultValue = v; updatePreview(); }, varType));
+  // Type display (read-only)
+  const typeRow = document.createElement('div');
+  typeRow.className = 'prop-row';
+  typeRow.innerHTML = `<span class="prop-label" style="color:var(--text-muted)">Type</span><div class="prop-value"><span style="font-family:var(--font-mono);font-size:12px;color:var(--accent)">${varType}</span></div>`;
+  section.body.appendChild(typeRow);
+}
+
+function createSection(title, initialOpen, addCallback) {
+  const el = document.createElement('div');
+  el.className = 'props-section';
+  const header = document.createElement('div');
+  header.className = 'props-section-header';
+  let open = initialOpen !== false;
+  header.innerHTML = `<span><span class="toggle ${open ? '' : 'collapsed'}">▾</span> ${escHtml(title)}</span>${addCallback ? '<button class="btn btn-sm btn-icon" style="font-size:14px" title="Add">+</button>' : ''}`;
+  const body = document.createElement('div');
+  body.className = 'props-section-body' + (open ? '' : ' collapsed');
+  header.querySelector('.toggle').parentElement.addEventListener('click', () => {
+    open = !open;
+    header.querySelector('.toggle').className = 'toggle' + (open ? '' : ' collapsed');
+    body.className = 'props-section-body' + (open ? '' : ' collapsed');
+  });
+  if (addCallback) {
+    header.querySelector('button').addEventListener('mousedown', (e) => { e.stopPropagation(); addCallback(); });
+  }
+  el.appendChild(header);
+  el.appendChild(body);
+  return { el, body };
+}
+
+function createModifierFrame(mod, index, parentPath, arrayKey) {
+  const shortClass = getShortClass(mod._class);
+  const frame = document.createElement('div');
+  frame.className = 'frame';
+  const frameId = `${parentPath}.${arrayKey}.${index}`;
+  const open = true;
+
+  const header = document.createElement('div');
+  header.className = 'frame-header';
+  const isMod = arrayKey === 'm_Modifiers';
+  header.style.borderLeft = `3px solid ${isMod ? 'var(--mauve)' : 'var(--yellow)'}`;
+  header.innerHTML = `<span class="frame-toggle ${open ? '' : 'collapsed'}">▾</span><span class="frame-name">${shortClass}</span><span class="frame-actions"><button title="Move Up" onclick="moveModifier('${parentPath}','${arrayKey}',${index},-1)">▲</button><button title="Move Down" onclick="moveModifier('${parentPath}','${arrayKey}',${index},1)">▼</button><button title="Duplicate" onclick="duplicateModifier('${parentPath}','${arrayKey}',${index})">📋</button><button class="del" title="Delete" onclick="deleteModifier('${parentPath}','${arrayKey}',${index})">✕</button></span>`;
+
+  const body = document.createElement('div');
+  body.className = 'frame-body' + (open ? '' : ' collapsed');
+
+  header.addEventListener('click', (e) => {
+    if (e.target.closest('.frame-actions')) return;
+    const isCollapsed = body.classList.toggle('collapsed');
+    header.querySelector('.frame-toggle').classList.toggle('collapsed', isCollapsed);
+  });
+
+  // Render properties
+  const propKeys = PROP_MAP[shortClass];
+  const keys = propKeys || Object.keys(mod).filter(k => k !== '_class' && k !== 'm_nElementID');
+  keys.forEach(key => {
+    if (key === 'm_nElementID') return;
+    const val = mod[key] !== undefined ? mod[key] : null;
+    body.appendChild(createPropertyWidget(key, val, (newVal) => {
+      pushUndo();
+      const parentNode = resolveNode(parentPath);
+      if (!parentNode) return;
+      const arr = parentNode[arrayKey];
+      if (!arr || !arr[index]) return;
+      if (newVal === null || newVal === undefined) delete arr[index][key];
+      else arr[index][key] = newVal;
+      updatePreview();
+    }));
+  });
+
+  frame.appendChild(header);
+  frame.appendChild(body);
+  return frame;
+}
+
+// Modifier operations
+function deleteModifier(parentPath, arrayKey, index) {
+  pushUndo();
+  const node = resolveNode(parentPath);
+  if (node && node[arrayKey]) { node[arrayKey].splice(index, 1); renderAll(); }
+}
+function duplicateModifier(parentPath, arrayKey, index) {
+  pushUndo();
+  const node = resolveNode(parentPath);
+  if (node && node[arrayKey] && node[arrayKey][index]) {
+    const clone = deepClone(node[arrayKey][index]);
+    if ('m_nElementID' in clone) clone.m_nElementID = genId();
+    node[arrayKey].splice(index + 1, 0, clone);
+    renderAll();
+  }
+}
+function moveModifier(parentPath, arrayKey, index, direction) {
+  const node = resolveNode(parentPath);
+  if (!node || !node[arrayKey]) return;
+  const arr = node[arrayKey];
+  const newIdx = index + direction;
+  if (newIdx < 0 || newIdx >= arr.length) return;
+  pushUndo();
+  const item = arr.splice(index, 1)[0];
+  arr.splice(newIdx, 0, item);
+  renderAll();
+}
+
+// ===== PROPERTY WIDGETS =====
+function detectPropType(key, value) {
+  if (key === 'm_bEnabled') return 'bool';
+  if (COMBO_OPTIONS[key]) return 'combo';
+  if (key === 'm_HandleColor') return 'color';
+  if (key === 'm_ColorChoices') return 'colorlist';
+  if (key === 'm_VariableComparison') return 'comparison';
+  if (key === 'm_VariableValue' && value && typeof value === 'object' && 'm_TargetName' in value) return 'setvar';
+  if (key === 'm_AllowedSurfaceProperties' || key === 'm_DisallowedSurfaceProperties') return 'stringlist';
+  if (key === 'm_Comment') return 'comment';
+  if (key === 'm_DefaultPath') return 'json';
+  if (value && typeof value === 'object' && value.m_Components) return 'vec3';
+  if (value && typeof value === 'object' && value.m_Expression !== undefined) return 'expression';
+  if (value && typeof value === 'object' && value.m_SourceName !== undefined) return 'varref';
+  if (Array.isArray(value) && value.length >= 2 && value.length <= 4 && typeof value[0] === 'number') return 'vec3';
+  if (key.match(/^m_v[A-Z]/)) return 'vec3';
+  if (key.match(/^m_fl[A-Z]/) || key.match(/^m_f[A-Z]/) || key === 'm_HandleSize') return 'float';
+  if (key.match(/^m_n[A-Z]/) || key === 'm_SpecificChildIndex' || key === 'm_ColorSelection') return 'int';
+  if (key.match(/^m_b[A-Z]/)) return 'bool';
+  if (key.match(/^m_s[A-Z]/) || key === 'm_MaterialGroupName' || key === 'm_StateName' || key === 'm_PathName' || key.includes('OutputVariable') || key.includes('VariableName')) return 'string';
+  if (key === 'm_Expression') return 'expression';
+  if (typeof value === 'boolean') return 'bool';
+  if (typeof value === 'number') return 'float';
+  if (typeof value === 'string') return 'string';
+  return 'string';
+}
+
+function getPropColor(type) {
+  switch(type) {
+    case 'float': return 'var(--color-float)';
+    case 'int': return 'var(--color-int)';
+    case 'string': return 'var(--color-string)';
+    case 'expression': return 'var(--color-expr)';
+    case 'vec3': return 'var(--color-vec3)';
+    case 'color': return 'var(--color-color)';
+    default: return 'var(--text-primary)';
+  }
+}
+
+// Determine whether a property supports input-choice mode selector
+function supportsInputChoice(type) {
+  return ['float','int','string','bool','vec3','combo','expression'].includes(type);
+}
+
+// Determine current input mode from stored value
+function detectInputMode(value, type) {
+  if (value === null || value === undefined) return 'default';
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value.m_Expression !== undefined) return 'expression';
+    if (value.m_SourceName !== undefined) return 'variable';
+    if (value.m_Components !== undefined) return 'value';
+  }
+  return 'value';
+}
+
+// Get the list of defined variable names for the variable dropdown
+function getVariableNames() {
+  return (doc.m_Variables || []).map(v => v.m_VariableName || 'unnamed');
+}
+
+// Create a slider + spinbox combo widget
+function createSliderWidget(val, step, isInt, onInput) {
+  const w = document.createElement('div');
+  w.className = 'slider-widget';
+  const numInp = document.createElement('input');
+  numInp.type = 'number';
+  numInp.step = step;
+  numInp.value = val != null ? val : 0;
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  // Dynamic range based on value
+  const absVal = Math.abs(val || 0);
+  let sMin, sMax;
+  if (absVal < 1) { sMin = isInt ? -10 : -1; sMax = isInt ? 10 : 1; }
+  else if (absVal < 100) { sMin = isInt ? Math.floor(-absVal * 5) : -absVal * 5; sMax = isInt ? Math.ceil(absVal * 5) : absVal * 5; }
+  else { sMin = isInt ? Math.floor(-absVal * 2) : -absVal * 2; sMax = isInt ? Math.ceil(absVal * 2) : absVal * 2; }
+  if (sMin >= sMax) { sMin = isInt ? -100 : -10; sMax = isInt ? 100 : 10; }
+  slider.min = sMin;
+  slider.max = sMax;
+  slider.step = step;
+  slider.value = val != null ? val : 0;
+  numInp.addEventListener('change', () => {
+    const v = isInt ? (parseInt(numInp.value) || 0) : (parseFloat(numInp.value) || 0);
+    slider.value = v;
+    // Expand range if needed
+    if (v < parseFloat(slider.min)) slider.min = v * 2;
+    if (v > parseFloat(slider.max)) slider.max = v * 2;
+    onInput(v);
+  });
+  slider.addEventListener('input', () => {
+    const v = isInt ? parseInt(slider.value) : parseFloat(slider.value);
+    numInp.value = v;
+    onInput(v);
+  });
+  w.appendChild(numInp);
+  w.appendChild(slider);
+  return w;
+}
+
+// Build the input-choice widget wrapper
+function buildInputChoiceWidget(key, value, type, onChange, isVec3Component) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'input-choice-row';
+  const sel = document.createElement('select');
+  sel.className = 'input-choice-select';
+  const modes = isVec3Component
+    ? [['value','Val'],['variable','Var'],['expression','Expr']]
+    : [['default','Def'],['value','Val'],['variable','Var'],['expression','Expr']];
+  modes.forEach(([val, label]) => {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = label;
+    sel.appendChild(o);
+  });
+
+  const body = document.createElement('div');
+  body.className = 'input-choice-body';
+  wrapper.appendChild(sel);
+  wrapper.appendChild(body);
+
+  const currentMode = isVec3Component ? detectInputMode(value, type) : detectInputMode(value, type);
+  // For vec3 component default is same as value
+  sel.value = (isVec3Component && currentMode === 'default') ? 'value' : currentMode;
+
+  function renderMode(mode) {
+    body.innerHTML = '';
+    if (mode === 'default') {
+      const def = document.createElement('div');
+      def.className = 'input-choice-default';
+      def.textContent = '(default)';
+      body.appendChild(def);
+      onChange(null);
+      return;
+    }
+    if (mode === 'variable') {
+      const varSel = document.createElement('select');
+      varSel.className = 'prop-input';
+      varSel.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      const varNames = getVariableNames();
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = ''; emptyOpt.textContent = '-- Select Variable --';
+      varSel.appendChild(emptyOpt);
+      varNames.forEach(n => {
+        const o = document.createElement('option');
+        o.value = n; o.textContent = n;
+        varSel.appendChild(o);
+      });
+      // Current value
+      if (value && typeof value === 'object' && value.m_SourceName) varSel.value = value.m_SourceName;
+      varSel.addEventListener('change', () => {
+        if (varSel.value) onChange({ m_SourceName: varSel.value });
+      });
+      body.appendChild(varSel);
+      return;
+    }
+    if (mode === 'expression') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'prop-input';
+      inp.style.fontFamily = 'var(--font-mono)';
+      inp.style.color = 'var(--color-expr)';
+      inp.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      inp.placeholder = 'Expression...';
+      if (value && typeof value === 'object' && value.m_Expression !== undefined) inp.value = value.m_Expression;
+      inp.addEventListener('change', () => {
+        onChange({ m_Expression: inp.value });
+      });
+      body.appendChild(inp);
+      return;
+    }
+    // mode === 'value'
+    let rawValue = value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      if (value.m_Expression !== undefined) rawValue = parseFloat(value.m_Expression) || 0;
+      else if (value.m_SourceName !== undefined) rawValue = 0;
+      else if (value.m_Components !== undefined) rawValue = value.m_Components;
+    }
+    if (type === 'float') {
+      const sw = createSliderWidget(rawValue != null ? rawValue : 0, '0.1', false, (v) => onChange(v));
+      sw.querySelector('input[type=number]').style.borderRadius = '0';
+      body.appendChild(sw);
+    } else if (type === 'int') {
+      const sw = createSliderWidget(rawValue != null ? Math.round(rawValue) : 0, '1', true, (v) => onChange(v));
+      sw.querySelector('input[type=number]').style.borderRadius = '0';
+      body.appendChild(sw);
+    } else if (type === 'bool') {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'prop-check';
+      cb.checked = !!rawValue;
+      cb.addEventListener('change', () => onChange(cb.checked));
+      body.appendChild(cb);
+    } else if (type === 'string') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'prop-input';
+      inp.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      inp.value = rawValue != null ? String(rawValue) : '';
+      inp.addEventListener('change', () => onChange(inp.value));
+      body.appendChild(inp);
+    } else if (type === 'combo') {
+      const combSel = document.createElement('select');
+      combSel.className = 'prop-input';
+      combSel.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      const options = COMBO_OPTIONS[key] || [];
+      options.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if (opt === rawValue) o.selected = true;
+        combSel.appendChild(o);
+      });
+      combSel.addEventListener('change', () => onChange(combSel.value));
+      body.appendChild(combSel);
+    } else if (type === 'expression') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'prop-input';
+      inp.style.fontFamily = 'var(--font-mono)';
+      inp.style.borderRadius = '0 var(--radius-sm) var(--radius-sm) 0';
+      inp.value = rawValue != null ? String(rawValue) : '';
+      inp.placeholder = 'Expression...';
+      inp.addEventListener('change', () => onChange({ m_Expression: inp.value }));
+      body.appendChild(inp);
+    }
+  }
+
+  renderMode(sel.value);
+  sel.addEventListener('change', () => renderMode(sel.value));
+  return wrapper;
+}
+
+// Build vec3 widget with top-level mode (Default/Variable/Components) and per-component modes
+function buildVec3Widget(key, value, onChange) {
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '4px';
+  container.style.flex = '1';
+
+  // Determine top-level mode
+  let topMode = 'default';
+  if (value !== null && value !== undefined) {
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      if (value.m_SourceName !== undefined) topMode = 'variable';
+      else if (value.m_Components !== undefined) topMode = 'components';
+      else if (value.m_Expression !== undefined) topMode = 'expression';
+    } else if (Array.isArray(value)) {
+      topMode = 'components';
+    }
+  }
+
+  // Top-level selector
+  const topRow = document.createElement('div');
+  topRow.className = 'vec3-choice-row';
+  const topSel = document.createElement('select');
+  topSel.className = 'vec3-choice-select';
+  [['default','Default'],['variable','Variable'],['components','Components']].forEach(([v,l]) => {
+    const o = document.createElement('option'); o.value = v; o.textContent = l; topSel.appendChild(o);
+  });
+  topSel.value = topMode;
+  topRow.appendChild(topSel);
+
+  const topBody = document.createElement('div');
+  topBody.style.flex = '1';
+  topBody.style.minWidth = '0';
+  topBody.style.display = 'flex';
+  topBody.style.alignItems = 'center';
+  topRow.appendChild(topBody);
+  container.appendChild(topRow);
+
+  const compContainer = document.createElement('div');
+  compContainer.className = 'vec3-components';
+  container.appendChild(compContainer);
+
+  function isWrappedComponents(v) {
+    return v && typeof v === 'object' && !Array.isArray(v) && v.m_Components !== undefined;
+  }
+
+  function getComponents() {
+    if (Array.isArray(value)) return [...value];
+    if (isWrappedComponents(value)) return [...(value.m_Components || [0,0,0])];
+    return [0, 0, 0];
+  }
+
+  function emitValue(newValue) {
+    // Preserve wrapper format: if original used m_Components, keep it
+    if (isWrappedComponents(value) && Array.isArray(newValue)) {
+      onChange({ m_Components: newValue });
+    } else {
+      onChange(newValue);
+    }
+  }
+
+  function renderTopMode(mode) {
+    topBody.innerHTML = '';
+    compContainer.innerHTML = '';
+    if (mode === 'default') {
+      const def = document.createElement('div');
+      def.className = 'input-choice-default';
+      def.textContent = '(default)';
+      def.style.borderRadius = 'var(--radius-sm)';
+      def.style.marginLeft = '4px';
+      topBody.appendChild(def);
+      onChange(null);
+      return;
+    }
+    if (mode === 'variable') {
+      const varSel = document.createElement('select');
+      varSel.className = 'prop-input';
+      varSel.style.marginLeft = '4px';
+      const varNames = getVariableNames();
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = ''; emptyOpt.textContent = '-- Select Variable --';
+      varSel.appendChild(emptyOpt);
+      varNames.forEach(n => {
+        const o = document.createElement('option'); o.value = n; o.textContent = n; varSel.appendChild(o);
+      });
+      if (value && typeof value === 'object' && value.m_SourceName) varSel.value = value.m_SourceName;
+      varSel.addEventListener('change', () => {
+        if (varSel.value) onChange({ m_SourceName: varSel.value });
+      });
+      topBody.appendChild(varSel);
+      return;
+    }
+    // mode === 'components'
+    const axes = ['X','Y','Z'];
+    const colors = ['#f38ba8','#a6e3a1','#89b4fa'];
+    const comps = getComponents();
+
+    axes.forEach((axis, ai) => {
+      const compRow = document.createElement('div');
+      compRow.className = 'vec3-comp-row';
+      const lbl = document.createElement('span');
+      lbl.className = 'vec3-comp-label';
+      lbl.style.color = colors[ai];
+      lbl.textContent = axis;
+      compRow.appendChild(lbl);
+
+      // Each component can be: value (float+slider), variable, expression
+      const compVal = comps[ai];
+      const compWidget = buildInputChoiceWidget(key + '.' + axis, compVal, 'float', (newVal) => {
+        const newComps = getComponents();
+        newComps[ai] = newVal;
+        emitValue(newComps);
+      }, true /* isVec3Component */);
+      compRow.appendChild(compWidget);
+      compContainer.appendChild(compRow);
+    });
+  }
+
+  renderTopMode(topMode);
+  topSel.addEventListener('change', () => renderTopMode(topSel.value));
+  return container;
+}
+
+function createPropertyWidget(key, value, onChange, varType) {
+  const type = varType ? detectVarPropType(varType) : detectPropType(key, value);
+  const row = document.createElement('div');
+  row.className = 'prop-row';
+  const label = document.createElement('span');
+  label.className = 'prop-label';
+  label.textContent = prettify(key);
+  label.title = key;
+  label.style.color = getPropColor(type);
+  const valDiv = document.createElement('div');
+  valDiv.className = 'prop-value';
+
+  // Vec3 gets its own special composite widget
+  if (type === 'vec3') {
+    valDiv.appendChild(buildVec3Widget(key, value, onChange));
+    row.appendChild(label);
+    row.appendChild(valDiv);
+    return row;
+  }
+
+  // Types that support input-choice mode selector
+  if (supportsInputChoice(type) && type !== 'bool') {
+    valDiv.appendChild(buildInputChoiceWidget(key, value, type, onChange, false));
+    row.appendChild(label);
+    row.appendChild(valDiv);
+    return row;
+  }
+
+  // Special/complex types that don't get input-choice
+  let actualValue = value;
+  let valueMode = 'literal';
+  if (value && typeof value === 'object' && !(Array.isArray(value))) {
+    if (value.m_Expression !== undefined) { actualValue = value.m_Expression; valueMode = 'expression'; }
+    else if (value.m_SourceName !== undefined) { actualValue = value.m_SourceName; valueMode = 'variable'; }
+    else if (value.m_Components !== undefined) { actualValue = value.m_Components; valueMode = 'literal'; }
+  }
+
+  switch (type) {
+    case 'bool': {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'prop-check';
+      cb.checked = !!actualValue;
+      cb.addEventListener('change', () => onChange(cb.checked));
+      valDiv.appendChild(cb);
+      break;
+    }
+    case 'color': {
+      const colorInp = document.createElement('input');
+      colorInp.type = 'color';
+      colorInp.className = 'prop-color';
+      if (Array.isArray(actualValue)) {
+        colorInp.value = rgbToHex(actualValue[0] || 0, actualValue[1] || 0, actualValue[2] || 0);
+      }
+      colorInp.addEventListener('input', () => {
+        const hex = colorInp.value;
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        onChange([r, g, b]);
+      });
+      valDiv.appendChild(colorInp);
+      break;
+    }
+    case 'comparison': {
+      const comp = value || { m_Name: '', m_Value: 0, m_Comparison: 'EQUAL' };
+      const nameInp = document.createElement('input');
+      nameInp.type = 'text'; nameInp.className = 'prop-input'; nameInp.style.width = '80px'; nameInp.placeholder = 'Variable';
+      nameInp.value = comp.m_Name || '';
+      const opSel = document.createElement('select');
+      opSel.className = 'prop-input'; opSel.style.width = '60px';
+      (COMBO_OPTIONS.m_Comparison || []).forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o.replace(/_/g,' '); if (o === comp.m_Comparison) opt.selected = true; opSel.appendChild(opt); });
+      const valInp = document.createElement('input');
+      valInp.type = 'text'; valInp.className = 'prop-input'; valInp.style.width = '60px'; valInp.placeholder = 'Value';
+      valInp.value = comp.m_Value != null ? comp.m_Value : '';
+      function emitComp() {
+        let v = valInp.value;
+        try { v = JSON.parse(v); } catch(e) {}
+        onChange({ m_Name: nameInp.value, m_Value: v, m_Comparison: opSel.value });
+      }
+      nameInp.addEventListener('change', emitComp);
+      opSel.addEventListener('change', emitComp);
+      valInp.addEventListener('change', emitComp);
+      valDiv.appendChild(nameInp); valDiv.appendChild(opSel); valDiv.appendChild(valInp);
+      break;
+    }
+    case 'colorlist': {
+      const list = Array.isArray(value) ? value : [];
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex'; wrapper.style.flexDirection = 'column'; wrapper.style.gap = '4px'; wrapper.style.flex = '1';
+      list.forEach((color, ci) => {
+        const cr = document.createElement('div');
+        cr.style.display = 'flex'; cr.style.gap = '4px'; cr.style.alignItems = 'center';
+        const ci2 = document.createElement('input');
+        ci2.type = 'color'; ci2.className = 'prop-color';
+        if (Array.isArray(color)) ci2.value = rgbToHex(color[0]||0,color[1]||0,color[2]||0);
+        ci2.addEventListener('input', () => {
+          const hex = ci2.value;
+          const newList = deepClone(list);
+          newList[ci] = [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+          onChange(newList);
+        });
+        const del = document.createElement('button');
+        del.className = 'btn btn-sm btn-icon btn-danger'; del.textContent = '\u2715';
+        del.addEventListener('click', () => { const newList = deepClone(list); newList.splice(ci,1); onChange(newList); renderProperties(); });
+        cr.appendChild(ci2); cr.appendChild(del);
+        wrapper.appendChild(cr);
+      });
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-sm'; addBtn.textContent = '+ Color';
+      addBtn.addEventListener('click', () => { const newList = deepClone(list); newList.push([255,255,255]); onChange(newList); renderProperties(); });
+      wrapper.appendChild(addBtn);
+      valDiv.appendChild(wrapper);
+      break;
+    }
+    case 'stringlist': {
+      const list = Array.isArray(value) ? value : [];
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex'; wrapper.style.flexDirection = 'column'; wrapper.style.gap = '2px'; wrapper.style.flex = '1';
+      list.forEach((s, si) => {
+        const sr = document.createElement('div');
+        sr.style.display = 'flex'; sr.style.gap = '4px';
+        const sinp = document.createElement('input');
+        sinp.type = 'text'; sinp.className = 'prop-input'; sinp.value = s;
+        sinp.addEventListener('change', () => { const nl = [...list]; nl[si] = sinp.value; onChange(nl); });
+        const del = document.createElement('button');
+        del.className = 'btn btn-sm btn-icon btn-danger'; del.textContent = '\u2715';
+        del.addEventListener('click', () => { const nl = [...list]; nl.splice(si,1); onChange(nl); renderProperties(); });
+        sr.appendChild(sinp); sr.appendChild(del);
+        wrapper.appendChild(sr);
+      });
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-sm'; addBtn.textContent = '+ Add';
+      addBtn.addEventListener('click', () => { onChange([...list, '']); renderProperties(); });
+      wrapper.appendChild(addBtn);
+      valDiv.appendChild(wrapper);
+      break;
+    }
+    case 'comment': {
+      const ta = document.createElement('textarea');
+      ta.className = 'prop-input';
+      ta.style.minHeight = '60px'; ta.style.resize = 'vertical'; ta.style.fontFamily = 'var(--font-mono)';
+      ta.value = actualValue || '';
+      ta.addEventListener('change', () => onChange(ta.value));
+      valDiv.appendChild(ta);
+      break;
+    }
+    case 'setvar': {
+      const sv = value || { m_TargetName: null, m_DataType: null, m_Value: null };
+      const tn = document.createElement('input');
+      tn.type = 'text'; tn.className = 'prop-input'; tn.placeholder = 'Target Name'; tn.value = sv.m_TargetName || '';
+      const dt = document.createElement('input');
+      dt.type = 'text'; dt.className = 'prop-input'; dt.placeholder = 'Data Type'; dt.value = sv.m_DataType || '';
+      const vl = document.createElement('input');
+      vl.type = 'text'; vl.className = 'prop-input'; vl.placeholder = 'Value'; vl.value = sv.m_Value != null ? JSON.stringify(sv.m_Value) : '';
+      function emitSV() {
+        let v = vl.value; try { v = JSON.parse(v); } catch(e) {}
+        onChange({ m_TargetName: tn.value || null, m_DataType: dt.value || null, m_Value: v });
+      }
+      tn.addEventListener('change', emitSV); dt.addEventListener('change', emitSV); vl.addEventListener('change', emitSV);
+      const w = document.createElement('div');
+      w.style.display='flex';w.style.flexDirection='column';w.style.gap='4px';w.style.flex='1';
+      w.appendChild(tn);w.appendChild(dt);w.appendChild(vl);
+      valDiv.appendChild(w);
+      break;
+    }
+    case 'json': {
+      const ta = document.createElement('textarea');
+      ta.className = 'prop-input';
+      ta.style.minHeight = '40px'; ta.style.resize = 'vertical'; ta.style.fontFamily = 'var(--font-mono)'; ta.style.fontSize = '10px';
+      ta.value = JSON.stringify(actualValue, null, 2);
+      ta.addEventListener('change', () => { try { onChange(JSON.parse(ta.value)); } catch(e) { /* keep old */ } });
+      valDiv.appendChild(ta);
+      break;
+    }
+    default: {
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.className = 'prop-input';
+      inp.value = actualValue != null ? String(actualValue) : '';
+      inp.addEventListener('change', () => onChange(inp.value));
+      valDiv.appendChild(inp);
+    }
+  }
+
+  row.appendChild(label);
+  row.appendChild(valDiv);
+  return row;
+}
+
+function detectVarPropType(varType) {
+  if (varType === 'Bool') return 'bool';
+  if (varType === 'Int') return 'int';
+  if (varType === 'Float') return 'float';
+  if (varType === 'String' || varType === 'Model' || varType === 'MaterialGroup') return 'string';
+  if (varType === 'Vector3D' || varType === 'Angles' || varType === 'Color') return 'vec3';
+  if (varType === 'Vector2D') return 'vec3';
+  return 'string';
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(c => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, '0')).join('');
+}
+
+// ===== PREVIEW / JSON / KV3 =====
+function updatePreview() {
+  document.getElementById('previewTree').innerHTML = syntaxHighlight(JSON.stringify(doc, null, 2));
+  document.getElementById('jsonEditor').value = JSON.stringify(doc, null, 2);
+  document.getElementById('kv3Editor').value = jsonToKV3(doc);
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)"(?=\s*:)/g, '<span class="key">"$1"</span>')
+    .replace(/:\s*"([^"]*)"/g, ': <span class="str">"$1"</span>')
+    .replace(/:\s*(\d+\.?\d*)/g, ': <span class="num">$1</span>')
+    .replace(/:\s*(true|false)/g, ': <span class="bool">$1</span>')
+    .replace(/:\s*(null)/g, ': <span class="null">$1</span>');
+}
+
+function switchTab(btn, tabId) {
+  btn.parentElement.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  btn.closest('.panel').querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  if (tabId === 'jsonEdit') document.getElementById('jsonEditor').value = JSON.stringify(doc, null, 2);
+  if (tabId === 'kv3Tab') document.getElementById('kv3Editor').value = jsonToKV3(doc);
+}
+
+function applyJSONEdit() {
+  try {
+    const newDoc = JSON.parse(document.getElementById('jsonEditor').value);
+    pushUndo();
+    doc = newDoc;
+    recalcAllIds();
+    renderAll();
+    setStatus('JSON applied successfully');
+  } catch (e) {
+    setStatus('Invalid JSON: ' + e.message);
+  }
+}
+
+function applyKV3Edit() {
+  try {
+    document.getElementById('kv3Editor').removeAttribute('readonly');
+    const kv3 = document.getElementById('kv3Editor').value;
+    const parsed = kv3ToJSON(kv3);
+    pushUndo();
+    doc = parsed;
+    recalcAllIds();
+    renderAll();
+    setStatus('KV3 applied successfully');
+  } catch (e) {
+    setStatus('KV3 parse error: ' + e.message);
+  }
+}
+
+function copyKV3() {
+  navigator.clipboard.writeText(document.getElementById('kv3Editor').value);
+  setStatus('KV3 copied to clipboard');
+}
+
+// ===== KV3 SERIALIZER =====
+function jsonToKV3(obj) {
+  const header = '<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:vrfunknown:version{5ab656f0-06de-478a-804e-489e82994fb5} -->';
+  return header + '\n' + serializeKV3Value(obj, 0);
+}
+
+function serializeKV3Value(val, depth) {
+  const indent = '\t'.repeat(depth);
+  const indent1 = '\t'.repeat(depth + 1);
+  if (val === null || val === undefined) return 'null';
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'string') {
+    if (val.endsWith('.vmdl') || val.endsWith('.vsmart') || val.endsWith('.vmat')) return `resource_name:"${val}"`;
+    return `"${val}"`;
+  }
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '[]';
+    // Check if simple numeric array
+    if (val.every(v => typeof v === 'number')) return `[${val.join(', ')}]`;
+    let s = '\n' + indent + '[\n';
+    val.forEach((item, i) => {
+      s += indent1 + serializeKV3Value(item, depth + 1).trimStart();
+      if (i < val.length - 1) s += ',';
+      s += '\n';
+    });
+    s += indent + ']';
+    return s;
+  }
+  if (typeof val === 'object') {
+    const keys = Object.keys(val);
+    if (keys.length === 0) return '{}';
+    let s = '\n' + indent + '{\n';
+    keys.forEach(key => {
+      const v = val[key];
+      if (v === undefined) return;
+      const serialized = serializeKV3Value(v, depth + 1);
+      if (serialized.startsWith('\n')) {
+        s += indent1 + key + ' = ' + serialized.trimStart() + '\n';
+      } else {
+        s += indent1 + key + ' = ' + serialized + '\n';
+      }
+    });
+    s += indent + '}';
+    return s;
+  }
+  return String(val);
+}
+
+// ===== KV3 PARSER =====
+function kv3ToJSON(text) {
+  // Strip header line
+  text = text.replace(/^<!--.*?-->\s*/s, '');
+  const parser = new KV3Parser(text);
+  return parser.parseValue();
+}
+
+class KV3Parser {
+  constructor(text) {
+    this.text = text;
+    this.pos = 0;
+  }
+  skipWhitespace() {
+    while (this.pos < this.text.length && /[\s]/.test(this.text[this.pos])) this.pos++;
+    // Skip // comments
+    if (this.pos < this.text.length - 1 && this.text[this.pos] === '/' && this.text[this.pos+1] === '/') {
+      while (this.pos < this.text.length && this.text[this.pos] !== '\n') this.pos++;
+      this.skipWhitespace();
+    }
+  }
+  peek() { this.skipWhitespace(); return this.text[this.pos]; }
+  consume(ch) { this.skipWhitespace(); if (this.text[this.pos] === ch) this.pos++; }
+
+  parseValue() {
+    this.skipWhitespace();
+    const ch = this.text[this.pos];
+    if (ch === '{') return this.parseObject();
+    if (ch === '[') return this.parseArray();
+    if (ch === '"') return this.parseString();
+    // resource_name:"..."
+    if (this.text.substring(this.pos, this.pos + 14) === 'resource_name:') {
+      this.pos += 14;
+      return this.parseString();
+    }
+    return this.parseLiteral();
+  }
+
+  parseObject() {
+    this.consume('{');
+    const obj = {};
+    while (true) {
+      this.skipWhitespace();
+      if (this.pos >= this.text.length || this.text[this.pos] === '}') break;
+      const key = this.parseKey();
+      this.skipWhitespace();
+      this.consume('=');
+      const value = this.parseValue();
+      obj[key] = value;
+    }
+    this.consume('}');
+    return obj;
+  }
+
+  parseArray() {
+    this.consume('[');
+    const arr = [];
+    while (true) {
+      this.skipWhitespace();
+      if (this.pos >= this.text.length || this.text[this.pos] === ']') break;
+      arr.push(this.parseValue());
+      this.skipWhitespace();
+      if (this.text[this.pos] === ',') this.pos++;
+    }
+    this.consume(']');
+    return arr;
+  }
+
+  parseString() {
+    this.consume('"');
+    let s = '';
+    while (this.pos < this.text.length && this.text[this.pos] !== '"') {
+      if (this.text[this.pos] === '\\') { this.pos++; s += this.text[this.pos]; }
+      else s += this.text[this.pos];
+      this.pos++;
+    }
+    this.consume('"');
+    return s;
+  }
+
+  parseKey() {
+    this.skipWhitespace();
+    let key = '';
+    while (this.pos < this.text.length && /[a-zA-Z0-9_]/.test(this.text[this.pos])) {
+      key += this.text[this.pos];
+      this.pos++;
+    }
+    return key;
+  }
+
+  parseLiteral() {
+    this.skipWhitespace();
+    let lit = '';
+    while (this.pos < this.text.length && !/[\s\n\r,}\]=]/.test(this.text[this.pos])) {
+      lit += this.text[this.pos];
+      this.pos++;
+    }
+    if (lit === 'true') return true;
+    if (lit === 'false') return false;
+    if (lit === 'null') return null;
+    const num = Number(lit);
+    if (!isNaN(num) && lit !== '') return num;
+    return lit;
+  }
+}
+
+// ===== FILE OPERATIONS =====
+function newDocument() {
+  pushUndo();
+  doc = { generic_data_type: 'CSmartPropRoot', m_Children: [], m_Variables: [] };
+  nextElementId = 1;
+  selectedNodePath = null;
+  renderAll();
+  setStatus('New document created');
+}
+
+function importJSON() {
+  const input = document.getElementById('fileInput');
+  input.accept = '.json,.vsmart,.vdata';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        let text = ev.target.result;
+        let parsed;
+        // Try KV3 first if it starts with <!--
+        if (text.trim().startsWith('<!--')) {
+          parsed = kv3ToJSON(text);
+        } else {
+          parsed = JSON.parse(text);
+        }
+        pushUndo();
+        doc = parsed;
+        if (!doc.m_Children) doc.m_Children = [];
+        if (!doc.m_Variables) doc.m_Variables = [];
+        recalcAllIds();
+        selectedNodePath = null;
+        renderAll();
+        setStatus('Imported: ' + file.name);
+      } catch (err) {
+        setStatus('Import error: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
+  input.click();
+}
+
+function importKV3() {
+  const input = document.getElementById('fileInput');
+  input.accept = '.vsmart,.vdata,.kv3,.txt';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = kv3ToJSON(ev.target.result);
+        pushUndo();
+        doc = parsed;
+        if (!doc.m_Children) doc.m_Children = [];
+        if (!doc.m_Variables) doc.m_Variables = [];
+        recalcAllIds();
+        selectedNodePath = null;
+        renderAll();
+        setStatus('KV3 imported: ' + file.name);
+      } catch (err) {
+        setStatus('KV3 import error: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
+  input.click();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, 'smartprop.json');
+}
+
+function exportKV3() {
+  const blob = new Blob([jsonToKV3(doc)], { type: 'text/plain' });
+  downloadBlob(blob, 'smartprop.vsmart');
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ===== TOOLBAR BUTTONS =====
+document.getElementById('btnAddElement').addEventListener('mousedown', (e) => {
+  e.stopPropagation();
+  const rect = e.target.getBoundingClientRect();
+  showElementPicker(rect.left, rect.bottom + 4, (typeName) => {
+    pushUndo();
+    const node = createElement(typeName);
+    // If an element is selected and can have children, add as child
+    if (selectedNodePath && selectedNodePath.startsWith('children')) {
+      const sel = resolveNode(selectedNodePath);
+      if (sel && sel.m_Children !== undefined) {
+        sel.m_Children.push(node);
+        expandedNodes.add(selectedNodePath);
+        renderAll();
+        return;
+      }
+    }
+    doc.m_Children.push(node);
+    expandedNodes.add('children');
+    renderAll();
+  });
+});
+
+document.getElementById('btnAddVariable').addEventListener('mousedown', (e) => {
+  e.stopPropagation();
+  const rect = e.target.getBoundingClientRect();
+  const items = VARIABLE_TYPES.map(t => ({
+    label: t, action: () => { pushUndo(); doc.m_Variables.push(createVariable(t)); expandedNodes.add('variables'); renderAll(); }
+  }));
+  showMenu(rect.left, rect.bottom + 4, [{ header: 'Variable Type' }, ...items]);
+});
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.key === 'y') { e.preventDefault(); redo(); }
+    if (e.key === 'Z' && e.shiftKey) { e.preventDefault(); redo(); }
+    if (e.key === 'd') { e.preventDefault(); if (selectedNodePath) duplicateNode(selectedNodePath); }
+    if (e.key === 'c') { e.preventDefault(); if (selectedNodePath) copyNode(selectedNodePath); }
+    if (e.key === 'x') { e.preventDefault(); if (selectedNodePath) cutNode(selectedNodePath); }
+    if (e.key === 'v') { e.preventDefault(); if (selectedNodePath && clipboard) pasteNode(selectedNodePath); }
+    if (e.key === 'f') { e.preventDefault(); document.getElementById('treeSearch').focus(); }
+  }
+  if (e.key === 'Delete' && selectedNodePath) { e.preventDefault(); deleteNode(selectedNodePath); }
+});
+
+// ===== STATUS =====
+function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+function updateStatus() {
+  const elCount = countNodes(doc.m_Children);
+  const varCount = doc.m_Variables.length;
+  setStatus(`Elements: ${elCount} | Variables: ${varCount}`);
+}
+function countNodes(arr) {
+  let c = 0;
+  if (!arr) return 0;
+  arr.forEach(n => {
+    c++;
+    if (n.m_Children) c += countNodes(n.m_Children);
+    if (n.m_Modifiers) c += n.m_Modifiers.length;
+    if (n.m_SelectionCriteria) c += n.m_SelectionCriteria.length;
+  });
+  return c;
+}
+
+// ===== DOCKABLE PANELS & RESIZE =====
+const dockPanelMap = {
+  hierarchy: document.getElementById('hierarchyPanel'),
+  properties: document.getElementById('propsPanel'),
+  preview: document.getElementById('previewPanel')
+};
+const dockFloatingState = {}; // track undocked panels
+
+function undockPanel(id) {
+  const panel = dockPanelMap[id];
+  if (!panel || panel.classList.contains('dock-floating')) return;
+  const rect = panel.getBoundingClientRect();
+  const container = document.getElementById('dockContainer');
+  // Remember original position
+  dockFloatingState[id] = {
+    nextSibling: panel.nextElementSibling,
+    parent: panel.parentElement,
+    width: panel.style.width,
+    flex: panel.style.flex,
+    minWidth: panel.style.minWidth
+  };
+  // Move to absolute positioning within container
+  panel.classList.add('dock-floating');
+  panel.style.left = Math.min(rect.left, window.innerWidth - 400) + 'px';
+  panel.style.top = Math.min(rect.top, window.innerHeight - 300) + 'px';
+  panel.style.width = Math.max(rect.width, 300) + 'px';
+  panel.style.height = Math.max(rect.height, 250) + 'px';
+  panel.style.flex = 'none';
+  panel.style.minWidth = '0';
+  container.appendChild(panel);
+  // Update undock button to redock
+  const btn = panel.querySelector('.dock-handle-actions button[onclick*="undockPanel"]');
+  if (btn) {
+    btn.onclick = () => redockPanel(id);
+    btn.title = 'Dock';
+    btn.textContent = '\u21f2';
+  }
+  // Make draggable
+  makeDraggable(panel, panel.querySelector('.dock-handle'));
+  makeResizable(panel);
+}
+
+function redockPanel(id) {
+  const panel = dockPanelMap[id];
+  if (!panel || !panel.classList.contains('dock-floating')) return;
+  const state = dockFloatingState[id];
+  panel.classList.remove('dock-floating');
+  panel.style.left = '';
+  panel.style.top = '';
+  panel.style.height = '';
+  panel.style.position = '';
+  if (state) {
+    panel.style.width = state.width;
+    panel.style.flex = state.flex;
+    panel.style.minWidth = state.minWidth;
+    // Re-insert at original position
+    if (state.nextSibling && state.parent.contains(state.nextSibling)) {
+      state.parent.insertBefore(panel, state.nextSibling);
+    } else {
+      state.parent.appendChild(panel);
+    }
+  }
+  delete dockFloatingState[id];
+  // Update button back to undock
+  const btn = panel.querySelector('.dock-handle-actions button[onclick*="redockPanel"], .dock-handle-actions button[title="Dock"]');
+  if (btn) {
+    btn.onclick = () => undockPanel(id);
+    btn.title = 'Undock';
+    btn.textContent = '\u21f1';
+  }
+  // Remove resize handles if added
+  panel.querySelectorAll('.floating-resize-handle').forEach(h => h.remove());
+}
+
+function makeDraggable(panel, handle) {
+  let startX, startY, startLeft, startTop;
+  function onMouseDown(e) {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = parseInt(panel.style.left) || 0;
+    startTop = parseInt(panel.style.top) || 0;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+  function onMouseMove(e) {
+    panel.style.left = (startLeft + e.clientX - startX) + 'px';
+    panel.style.top = (startTop + e.clientY - startY) + 'px';
+  }
+  function onMouseUp() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+  handle.addEventListener('mousedown', onMouseDown);
+}
+
+function makeResizable(panel) {
+  const handle = document.createElement('div');
+  handle.className = 'floating-resize-handle';
+  handle.style.cssText = 'position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;z-index:101';
+  panel.appendChild(handle);
+  let startX, startY, startW, startH;
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    startX = e.clientX;
+    startY = e.clientY;
+    startW = panel.offsetWidth;
+    startH = panel.offsetHeight;
+    function onMove(e) {
+      panel.style.width = Math.max(250, startW + e.clientX - startX) + 'px';
+      panel.style.height = Math.max(200, startH + e.clientY - startY) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// Column resize handles
+document.querySelectorAll('.dock-resize-h').forEach(handle => {
+  let startX, leftPanel, rightPanel, startLeftW, startRightW;
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    handle.classList.add('active');
+    leftPanel = handle.previousElementSibling;
+    rightPanel = handle.nextElementSibling;
+    if (!leftPanel || !rightPanel) return;
+    startX = e.clientX;
+    startLeftW = leftPanel.offsetWidth;
+    startRightW = rightPanel.offsetWidth;
+    function onMove(e) {
+      const dx = e.clientX - startX;
+      const newLeft = Math.max(180, startLeftW + dx);
+      const newRight = Math.max(200, startRightW - dx);
+      leftPanel.style.width = newLeft + 'px';
+      leftPanel.style.flex = 'none';
+      rightPanel.style.width = newRight + 'px';
+      if (rightPanel.style.flex === 'none' || !rightPanel.style.flex) {
+        rightPanel.style.flex = 'none';
+      }
+    }
+    function onUp() {
+      handle.classList.remove('active');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+});
+
+// ===== INIT =====
+renderAll();
+</script>
+</body>
+</html>

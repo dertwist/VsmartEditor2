@@ -1,0 +1,16 @@
+{
+  "name": "lazy-angle-tempt-zeunj",
+  "productName": "lazy-angle-tempt-zeunj",
+  "description": "My Electron application description",
+  "keywords": [],
+  "main": "./main.js",
+  "version": "1.0.0",
+  "author": "maxharrow",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "41.0.0"
+  }
+}
