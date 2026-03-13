@@ -2314,7 +2314,13 @@ function initMenuBar() {
       else if (action === 'minimize' && window.electronAPI?.minimize) window.electronAPI.minimize();
       else if (action === 'zoom' && window.electronAPI?.zoom) window.electronAPI.zoom();
       else if (action === 'fullscreen' && window.electronAPI?.toggleFullScreen) window.electronAPI.toggleFullScreen();
-      else if (action === 'about') setStatus('SmartProp Editor v0.1');
+      else if (action === 'about') {
+        if (window.electronAPI?.getVersion) {
+          window.electronAPI.getVersion().then(v => setStatus(`SmartProp Editor v${v}`));
+        } else {
+          setStatus('SmartProp Editor');
+        }
+      }
       dropdowns.forEach(d => d.classList.remove('open'));
       activeDropdown = null;
     });
@@ -2328,6 +2334,14 @@ const btnMod = document.getElementById('btnToggleModifiers');
 const btnCrit = document.getElementById('btnToggleCriteria');
 if (btnMod) btnMod.classList.toggle('active', showModifiersInTree);
 if (btnCrit) btnCrit.classList.toggle('active', showSelectionCriteriaInTree);
+
+// Show app version in footer if running under Electron
+if (window.electronAPI?.getVersion) {
+  window.electronAPI.getVersion().then(v => {
+    const lbl = document.getElementById('versionLabel');
+    if (lbl) lbl.textContent = `SmartProp Editor v${v}`;
+  });
+}
 
 if (window.electronAPI) {
   window.electronAPI.onOpenFile((filePath) => {

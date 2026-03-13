@@ -54,6 +54,8 @@ ipcMain.handle('read-file', async (_event, filePath) => {
   return fs.readFileSync(filePath, 'utf-8')
 })
 
+ipcMain.handle('get-version', () => app.getVersion())
+
 ipcMain.on('app-quit', () => app.quit())
 ipcMain.on('window-minimize', () => { const w = BrowserWindow.getFocusedWindow(); if (w) w.minimize() })
 ipcMain.on('window-zoom', () => { const w = BrowserWindow.getFocusedWindow(); if (w) w.isMaximized() ? w.unmaximize() : w.maximize() })
