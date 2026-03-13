@@ -32,13 +32,24 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico"
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.icns"
     },
@@ -47,9 +58,8 @@
       "allowToChangeInstallationDirectory": true
     }
   },
-  "dependencies": {},
   "devDependencies": {
-    "electron": "41.0.0",
+    "electron": "^41.0.0",
     "electron-builder": "^25.1.8"
   }
 }
