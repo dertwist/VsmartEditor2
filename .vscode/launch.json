@@ -17,7 +17,10 @@
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
-            ]
+            ],
+            "windows": {
+                "runtimeExecutable": "npm.cmd"
+            }
         },
         {
             "type": "node",
@@ -31,7 +34,10 @@
             "console": "integratedTerminal",
             "skipFiles": [
                 "<node_internals>/**"
-            ]
+            ],
+            "windows": {
+                "runtimeExecutable": "npm.cmd"
+            }
         }
     ]
 }
