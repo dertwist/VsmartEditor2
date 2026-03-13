@@ -10,4 +10,3 @@
 | Platform | Stable release | Latest build |
 |----------|---------------|---------------|
 | 🪟 Windows | [**Download .exe**](https://github.com/dertwist/VsmartEditor2/releases/latest) | [Latest build ↗](https://github.com/dertwist/VsmartEditor2/releases/tag/latest-build) |
-| 🍎 macOS | [**Download .dmg**](https://github.com/dertwist/VsmartEditor2/releases/latest) | [Latest build ↗](https://github.com/dertwist/VsmartEditor2/releases/tag/latest-build) |
