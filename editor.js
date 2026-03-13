@@ -1,3 +1,6 @@
+// Delegate KV3 serialisation/parsing to the shared library (format/kv3.js).
+const { jsonToKV3, kv3ToJSON } = KV3Format;
+
 // ===== DATA MODEL =====
 let doc = {
   generic_data_type: "CSmartPropRoot",
@@ -6,6 +9,8 @@ let doc = {
 };
 let nextElementId = 1;
 let selectedNodePath = null; // path like "children.0.m_Modifiers.1"
+let currentFileName = 'Untitled';
+let currentFilePath = null; // full path when opened via Electron IPC; null when browser-only
 let undoStack = [], redoStack = [], maxUndo = 50;
 let sliderDragging = false, sliderDragUndoPushed = false;
 let expandedNodes = new Set(['root','children','variables']);
@@ -1225,6 +1230,20 @@ document.addEventListener('mouseup', () => {
   sliderDragUndoPushed = false;
 }, true);
 
+// Return a human-readable label for the "value" mode that reflects the field's actual type.
+function getValueModeLabel(type, key) {
+  if (type === 'float')  return 'Float';
+  if (type === 'int')    return 'Int';
+  if (type === 'bool')   return 'Bool';
+  if (type === 'string') return 'String';
+  if (type === 'combo') {
+    // Strip Hungarian-notation prefix (m_fl, m_n, m_b, m_s, m_v, m_f, m_) to get the enum name.
+    const s = key.replace(/^m_(?:fl|[nfbsv])?/, '');
+    return s || 'Value';
+  }
+  return 'Value';
+}
+
 // Build the input-choice widget wrapper
 function buildInputChoiceWidget(key, value, type, onChange, isVec3Component, isVariable = false) {
   const wrapper = document.createElement('div');
@@ -1232,16 +1251,14 @@ function buildInputChoiceWidget(key, value, type, onChange, isVec3Component, isV
   const sel = document.createElement('select');
   sel.className = 'input-choice-select';
 
+  const valueLabel = getValueModeLabel(type, key);
   let modes;
   if (isVariable) {
-    // Only Default and Value for variables
-    modes = [['default','Default'], ['value','Value']];
+    modes = [['default','Default'], ['value', valueLabel]];
   } else if (isVec3Component) {
-    // Use full names as requested in Step 3
-    modes = [['value','Value'],['variable','Variable'],['expression','Expression']];
+    modes = [['value', valueLabel], ['variable','Variable'], ['expression','Expression']];
   } else {
-    // Use full names as requested in Step 3
-    modes = [['default','Default'],['value','Value'],['variable','Variable'],['expression','Expression']];
+    modes = [['default','Default'], ['value', valueLabel], ['variable','Variable'], ['expression','Expression']];
   }
 
   modes.forEach(([val, label]) => {
@@ -1809,203 +1826,16 @@ function copyKV3() {
   setStatus('KV3 copied to clipboard');
 }
 
-// ===== KV3 SERIALIZER =====
-function jsonToKV3(obj) {
-  const header = '<!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:vrfunknown:version{5ab656f0-06de-478a-804e-489e82994fb5} -->';
-  return header + '\n' + serializeKV3Value(obj, 0);
-}
-
-function serializeKV3Value(val, depth) {
-  const indent = '\t'.repeat(depth);
-  const indent1 = '\t'.repeat(depth + 1);
-  if (val === null || val === undefined) return 'null';
-  if (typeof val === 'boolean') return val ? 'true' : 'false';
-  if (typeof val === 'number') return String(val);
-  if (typeof val === 'string') {
-    if (val.endsWith('.vmdl') || val.endsWith('.vsmart') || val.endsWith('.vmat')) return `resource_name:"${val}"`;
-    return `"${val}"`;
-  }
-  if (Array.isArray(val)) {
-    if (val.length === 0) return '[]';
-    // Check if simple numeric array
-    if (val.every(v => typeof v === 'number')) return `[${val.join(', ')}]`;
-    let s = '\n' + indent + '[\n';
-    val.forEach((item, i) => {
-      s += indent1 + serializeKV3Value(item, depth + 1).trimStart();
-      if (i < val.length - 1) s += ',';
-      s += '\n';
-    });
-    s += indent + ']';
-    return s;
-  }
-  if (typeof val === 'object') {
-    const keys = Object.keys(val);
-    if (keys.length === 0) return '{}';
-    let s = '\n' + indent + '{\n';
-    keys.forEach(key => {
-      const v = val[key];
-      if (v === undefined) return;
-      const serialized = serializeKV3Value(v, depth + 1);
-      if (serialized.startsWith('\n')) {
-        s += indent1 + key + ' = ' + serialized.trimStart() + '\n';
-      } else {
-        s += indent1 + key + ' = ' + serialized + '\n';
-      }
-    });
-    s += indent + '}';
-    return s;
-  }
-  return String(val);
-}
-
-// ===== KV3 PARSER =====
-function kv3ToJSON(text) {
-  // Strip header line
-  text = text.replace(/^<!--.*?-->\s*/s, '');
-  const parser = new KV3Parser(text);
-  return parser.parseValue();
-}
-
-class KV3Parser {
-  constructor(text) {
-    this.text = text;
-    this.pos = 0;
-  }
-  skipWhitespace() {
-    while (this.pos < this.text.length && /[\s]/.test(this.text[this.pos])) this.pos++;
-    // Skip // comments
-    if (this.pos < this.text.length - 1 && this.text[this.pos] === '/' && this.text[this.pos+1] === '/') {
-      while (this.pos < this.text.length && this.text[this.pos] !== '\n') this.pos++;
-      this.skipWhitespace();
-    }
-  }
-  peek() { this.skipWhitespace(); return this.text[this.pos]; }
-  consume(ch) { this.skipWhitespace(); if (this.text[this.pos] === ch) this.pos++; }
-
-  parseValue() {
-    this.skipWhitespace();
-    const ch = this.text[this.pos];
-    if (ch === '{') return this.parseObject();
-    if (ch === '[') return this.parseArray();
-    if (ch === '"') return this.parseString();
-    // resource_name:"..."
-    if (this.text.substring(this.pos, this.pos + 14) === 'resource_name:') {
-      this.pos += 14;
-      return this.parseString();
-    }
-    return this.parseLiteral();
-  }
-
-  parseObject() {
-    this.consume('{');
-    const obj = {};
-    while (true) {
-      this.skipWhitespace();
-      if (this.pos >= this.text.length || this.text[this.pos] === '}') break;
-      const key = this.parseKey();
-      this.skipWhitespace();
-      this.consume('=');
-      obj[key] = this.parseValue();
-    }
-    this.consume('}');
-    return obj;
-  }
-
-  parseArray() {
-    this.consume('[');
-    const arr = [];
-    while (true) {
-      this.skipWhitespace();
-      if (this.pos >= this.text.length || this.text[this.pos] === ']') break;
-      arr.push(this.parseValue());
-      this.skipWhitespace();
-      if (this.text[this.pos] === ',') this.pos++;
-    }
-    this.consume(']');
-    return arr;
-  }
-
-  parseString() {
-    this.consume('"');
-    let s = '';
-    while (this.pos < this.text.length && this.text[this.pos] !== '"') {
-      if (this.text[this.pos] === '\\') { this.pos++; s += this.text[this.pos]; }
-      else s += this.text[this.pos];
-      this.pos++;
-    }
-    this.consume('"');
-    return s;
-  }
-
-  parseKey() {
-    this.skipWhitespace();
-    let key = '';
-    while (this.pos < this.text.length && /[a-zA-Z0-9_]/.test(this.text[this.pos])) {
-      key += this.text[this.pos];
-      this.pos++;
-    }
-    return key;
-  }
-
-  parseLiteral() {
-    this.skipWhitespace();
-    let lit = '';
-    while (this.pos < this.text.length && !/[\s\n\r,}\]=]/.test(this.text[this.pos])) {
-      lit += this.text[this.pos];
-      this.pos++;
-    }
-    if (lit === 'true') return true;
-    if (lit === 'false') return false;
-    if (lit === 'null') return null;
-    const num = Number(lit);
-    if (!isNaN(num) && lit !== '') return num;
-    return lit;
-  }
-}
-
 // ===== FILE OPERATIONS =====
 function newDocument() {
   pushUndo('New Document');
   doc = { generic_data_type: 'CSmartPropRoot', m_Children: [], m_Variables: [] };
   nextElementId = 1;
   selectedNodePath = null;
+  currentFilePath = null;
+  setDocumentTitle('Untitled');
   renderAll();
   setStatus('New document created');
-}
-
-function importJSON() {
-  const input = document.getElementById('fileInput');
-  input.accept = '.json,.vsmart,.vdata';
-  input.onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        let text = ev.target.result;
-        let parsed;
-        // Try KV3 first if it starts with <!--
-        if (text.trim().startsWith('<!--')) {
-          parsed = kv3ToJSON(text);
-        } else {
-          parsed = JSON.parse(text);
-        }
-        pushUndo('Import');
-        doc = parsed;
-        if (!doc.m_Children) doc.m_Children = [];
-        if (!doc.m_Variables) doc.m_Variables = [];
-        recalcAllIds();
-        selectedNodePath = null;
-        renderAll();
-        setStatus('Imported: ' + file.name);
-      } catch (err) {
-        setStatus('Import error: ' + err.message);
-      }
-    };
-    reader.readAsText(file);
-    input.value = '';
-  };
-  input.click();
 }
 
 function importKV3() {
@@ -2018,16 +1848,17 @@ function importKV3() {
     reader.onload = (ev) => {
       try {
         const parsed = kv3ToJSON(ev.target.result);
-        pushUndo('Import KV3');
+        pushUndo('Open');
         doc = parsed;
         if (!doc.m_Children) doc.m_Children = [];
         if (!doc.m_Variables) doc.m_Variables = [];
         recalcAllIds();
         selectedNodePath = null;
+        setDocumentTitle(file.name);
         renderAll();
-        setStatus('KV3 imported: ' + file.name);
+        setStatus('Opened: ' + file.name);
       } catch (err) {
-        setStatus('KV3 import error: ' + err.message);
+        setStatus('Open error: ' + err.message);
       }
     };
     reader.readAsText(file);
@@ -2036,14 +1867,39 @@ function importKV3() {
   input.click();
 }
 
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
-  downloadBlob(blob, 'smartprop.json');
+function saveFile() {
+  if (currentFilePath && window.electronAPI?.saveFile) {
+    window.electronAPI.saveFile(currentFilePath, jsonToKV3(doc))
+      .then(() => setStatus('Saved: ' + currentFileName))
+      .catch(e => setStatus('Save error: ' + e.message));
+  } else {
+    saveFileAs();
+  }
 }
 
-function exportKV3() {
-  const blob = new Blob([jsonToKV3(doc)], { type: 'text/plain' });
-  downloadBlob(blob, 'smartprop.vsmart');
+function saveFileAs() {
+  if (window.electronAPI?.showSaveDialog) {
+    const base = currentFileName.replace(/\.[^.]+$/, '') || 'untitled';
+    window.electronAPI.showSaveDialog({
+      defaultPath: base + '.vsmart',
+      filters: [
+        { name: 'SmartProp', extensions: ['vsmart', 'vdata'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    }).then(result => {
+      if (result.canceled || !result.filePath) return;
+      window.electronAPI.saveFile(result.filePath, jsonToKV3(doc))
+        .then(() => {
+          currentFilePath = result.filePath;
+          setDocumentTitle(result.filePath.split(/[\\/]/).pop());
+          setStatus('Saved: ' + currentFileName);
+        })
+        .catch(e => setStatus('Save error: ' + e.message));
+    });
+  } else {
+    const base = currentFileName.replace(/\.[^.]+$/, '') || 'untitled';
+    downloadBlob(new Blob([jsonToKV3(doc)], { type: 'text/plain' }), base + '.vsmart');
+  }
 }
 
 function downloadBlob(blob, filename) {
@@ -2090,6 +1946,11 @@ document.getElementById('btnAddVariable').addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey) {
     if (e.key === 'n') { e.preventDefault(); newDocument(); return; }
+    if (e.key === 's') {
+      e.preventDefault();
+      if (e.shiftKey) saveFileAs(); else saveFile();
+      return;
+    }
     if (e.key === 'z') { e.preventDefault(); undo(); } else
     if (e.key === 'y') { e.preventDefault(); redo(); } else
     if (e.key === 'Z' && e.shiftKey) { e.preventDefault(); redo(); }
@@ -2107,6 +1968,11 @@ document.addEventListener('keydown', (e) => {
 
 // ===== STATUS =====
 function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+
+function setDocumentTitle(name) {
+  currentFileName = name;
+  document.title = 'VsmartEditor2 - ' + name;
+}
 function updateStatus() {
   const elCount = countNodes(doc.m_Children);
   const varCount = doc.m_Variables.length;
@@ -2316,10 +2182,9 @@ function initMenuBar() {
       e.stopPropagation();
       const action = el.dataset.action;
       if (action === 'newDocument') newDocument();
-      else if (action === 'importJSON') importJSON();
       else if (action === 'importKV3') importKV3();
-      else if (action === 'exportJSON') exportJSON();
-      else if (action === 'exportKV3') exportKV3();
+      else if (action === 'saveFile') saveFile();
+      else if (action === 'saveFileAs') saveFileAs();
       else if (action === 'quit') { if (window.electronAPI) window.electronAPI.quitApp(); else window.close(); }
       else if (action === 'addElement') document.getElementById('btnAddElement')?.click();
       else if (action === 'addVariable') document.getElementById('btnAddVariable')?.click();
@@ -2342,6 +2207,7 @@ function initMenuBar() {
 }
 
 // ===== INIT =====
+setDocumentTitle('Untitled');
 initMenuBar();
 renderAll();
 const btnMod = document.getElementById('btnToggleModifiers');
@@ -2359,23 +2225,25 @@ if (window.electronAPI?.getVersion) {
 
 if (window.electronAPI) {
   window.electronAPI.onOpenFile((filePath) => {
-    // Use Node fs via preload, or fetch via file:// — use IPC to read content
     window.electronAPI.readFile(filePath).then(content => {
       try {
-        const parsed = content.trim().startsWith('<!--') 
-          ? kv3ToJSON(content) 
-          : JSON.parse(content)
-        pushUndo('Open File')
-        doc = parsed
-        if (!doc.m_Children) doc.m_Children = []
-        if (!doc.m_Variables) doc.m_Variables = []
-        recalcAllIds()
-        selectedNodePath = null
-        renderAll()
-        setStatus('Opened: ' + filePath.split(/[\\/]/).pop())
-      } catch(e) {
-        setStatus('Error opening file: ' + e.message)
+        const parsed = content.trim().startsWith('<!--')
+          ? kv3ToJSON(content)
+          : JSON.parse(content);
+        const fileName = filePath.split(/[\\/]/).pop();
+        pushUndo('Open File');
+        doc = parsed;
+        if (!doc.m_Children) doc.m_Children = [];
+        if (!doc.m_Variables) doc.m_Variables = [];
+        recalcAllIds();
+        selectedNodePath = null;
+        currentFilePath = filePath;
+        setDocumentTitle(fileName);
+        renderAll();
+        setStatus('Opened: ' + fileName);
+      } catch (e) {
+        setStatus('Error opening file: ' + e.message);
       }
-    })
-  })
+    });
+  });
 }

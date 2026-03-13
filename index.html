@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartProp Editor</title>
+  <title>VsmartEditor2 - Untitled</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -19,11 +19,10 @@
   <div class="menu-dropdown" id="menuFile">
     <div class="menu-dropdown-item" data-action="newDocument"><span class="menu-item-label"><span class="menu-icon" id="mi-new"></span>New</span><span class="shortcut">Ctrl+N</span></div>
     <div class="menu-sep"></div>
-    <div class="menu-dropdown-item" data-action="importJSON"><span class="menu-item-label"><span class="menu-icon" id="mi-importjson"></span>Import JSON</span></div>
-    <div class="menu-dropdown-item" data-action="importKV3"><span class="menu-item-label"><span class="menu-icon" id="mi-importkv3"></span>Import KV3</span></div>
+    <div class="menu-dropdown-item" data-action="importKV3"><span class="menu-item-label"><span class="menu-icon" id="mi-importkv3"></span>Open...</span></div>
     <div class="menu-sep"></div>
-    <div class="menu-dropdown-item" data-action="exportJSON"><span class="menu-item-label"><span class="menu-icon" id="mi-exportjson"></span>Export JSON</span></div>
-    <div class="menu-dropdown-item" data-action="exportKV3"><span class="menu-item-label"><span class="menu-icon" id="mi-exportkv3"></span>Export KV3</span></div>
+    <div class="menu-dropdown-item" data-action="saveFile"><span class="menu-item-label"><span class="menu-icon" id="mi-save"></span>Save</span><span class="shortcut">Ctrl+S</span></div>
+    <div class="menu-dropdown-item" data-action="saveFileAs"><span class="menu-item-label"><span class="menu-icon" id="mi-saveas"></span>Save As...</span><span class="shortcut">Ctrl+Shift+S</span></div>
     <div class="menu-sep"></div>
     <div class="menu-dropdown-item" data-action="quit"><span class="menu-item-label"><span class="menu-icon" id="mi-quit"></span>Quit</span></div>
   </div>
@@ -122,12 +121,11 @@ document.addEventListener('DOMContentLoaded', function() {
   setIcon('tb-undock-properties',ICONS.undock);
   setIcon('tb-undock-history',  ICONS.undock);
   // File menu icons
-  setIcon('mi-new',        ICONS.filePlus);
-  setIcon('mi-importjson', ICONS.fileImport);
-  setIcon('mi-importkv3',  ICONS.fileCode);
-  setIcon('mi-exportjson', ICONS.fileExport);
-  setIcon('mi-exportkv3',  ICONS.fileCode);
-  setIcon('mi-quit',       ICONS.power);
+  setIcon('mi-new',       ICONS.filePlus);
+  setIcon('mi-importkv3', ICONS.fileImport);
+  setIcon('mi-save',      ICONS.save);
+  setIcon('mi-saveas',    ICONS.saveAs);
+  setIcon('mi-quit',      ICONS.power);
   // Edit menu icons
   setIcon('mi-addel',  ICONS.nodeAdd);
   setIcon('mi-addvar', ICONS.variableAdd);

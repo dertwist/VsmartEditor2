@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron/main')
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron/main')
 const path = require('node:path')
 const fs = require('fs')
 
@@ -52,6 +52,15 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('read-file', async (_event, filePath) => {
   return fs.readFileSync(filePath, 'utf-8')
+})
+
+ipcMain.handle('save-file', async (_event, filePath, content) => {
+  fs.writeFileSync(filePath, content, 'utf-8')
+  return true
+})
+
+ipcMain.handle('show-save-dialog', async (_event, opts) => {
+  return dialog.showSaveDialog(mainWindow, opts)
 })
 
 ipcMain.handle('get-version', () => app.getVersion())
