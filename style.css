@@ -1,4 +1,14 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* ===== ICON SYSTEM ===== */
+.icon{display:inline-block;vertical-align:middle;flex-shrink:0;pointer-events:none}
+/* Context menu icon+label row */
+.ctx-content{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
+.ctx-icon{display:flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;opacity:.75}
+.ctx-icon-placeholder{width:16px;height:16px;flex-shrink:0}
+.ctx-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Dropdown menu item icon+label */
+.menu-item-label{display:inline-flex;align-items:center;gap:7px}
+.menu-icon{display:flex;align-items:center;justify-content:center;width:15px;height:15px;flex-shrink:0;opacity:.7}
 /* ===== CUSTOM MENU BAR (matches editor dark theme) ===== */
 .app-menu-bar{display:flex;align-items:center;gap:0;padding:0 8px;height:28px;flex-shrink:0;background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);font-size:12px;font-family:var(--font-sans);-webkit-app-region:drag;user-select:none}
 .app-menu-bar .menu-item{padding:4px 12px;color:var(--text-secondary);cursor:pointer;border-radius:var(--radius-sm);-webkit-app-region:no-drag}
@@ -64,10 +74,11 @@ input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit
 .tree-item-row.drag-over-above{box-shadow:inset 0 2px 0 var(--accent)}
 .tree-item-row.drag-over-below{box-shadow:inset 0 -2px 0 var(--accent)}
 .tree-item-row.drag-over-inside{background:rgba(65,73,86,.15)}
-.tree-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);flex-shrink:0;transition:transform .15s;font-size:10px}
+.tree-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);flex-shrink:0;transition:transform .15s}
+.tree-toggle .icon{opacity:.6}
 .tree-toggle.expanded{transform:rotate(90deg)}
 .tree-toggle.empty{visibility:hidden}
-.tree-icon{flex-shrink:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.tree-icon{flex-shrink:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;opacity:.85}
 .tree-icon img{width:16px;height:16px;object-fit:contain;image-rendering:auto}
 .tree-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-badge{font-size:9px;padding:1px 5px;border-radius:8px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0}
@@ -94,7 +105,7 @@ input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit
 .props-section{border-bottom:1px solid var(--border-subtle)}
 .props-section-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);background:var(--bg-tertiary);border-bottom:1px solid var(--border-subtle);user-select:none}
 .props-section-header:hover{background:var(--bg-hover)}
-.props-section-header .toggle{font-size:10px;color:var(--text-muted);transition:transform .15s}
+.props-section-header .toggle{display:inline-flex;align-items:center;color:var(--text-muted);transition:transform .15s}
 .props-section-header .toggle.collapsed{transform:rotate(-90deg)}
 .props-section-body{padding:0}
 .props-section-body.collapsed{display:none}
@@ -122,11 +133,11 @@ input[type=color].prop-color{width:32px;height:24px;padding:1px;border:1px solid
 .frame{border:1px solid var(--border-subtle);border-radius:var(--radius);margin:6px;overflow:hidden;background:var(--bg-primary)}
 .frame-header{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg-surface);cursor:pointer;user-select:none;font-size:12px;font-weight:600}
 .frame-header:hover{background:var(--bg-hover)}
-.frame-header .frame-toggle{font-size:10px;color:var(--text-muted);transition:transform .15s}
+.frame-header .frame-toggle{display:inline-flex;align-items:center;color:var(--text-muted);transition:transform .15s}
 .frame-header .frame-toggle.collapsed{transform:rotate(-90deg)}
 .frame-header .frame-name{flex:1}
 .frame-header .frame-actions{display:flex;gap:2px}
-.frame-header .frame-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;font-size:12px}
+.frame-header .frame-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;display:inline-flex;align-items:center}
 .frame-header .frame-actions button:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
 .frame-header .frame-actions button.del:hover{color:var(--red)}
 .frame-body{border-top:1px solid var(--border-subtle)}
@@ -175,7 +186,7 @@ input[type=color].prop-color{width:32px;height:24px;padding:1px;border:1px solid
 .dock-handle:active{cursor:grabbing}
 .dock-handle-title{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)}
 .dock-handle-actions{display:flex;gap:2px}
-.dock-handle-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;font-size:12px;line-height:1}
+.dock-handle-actions button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:2px;display:inline-flex;align-items:center;line-height:1}
 .dock-handle-actions button:hover{color:var(--text-primary);background:rgba(255,255,255,.05)}
 .dock-handle-actions button.active{color:var(--accent)}
 .dock-handle-actions button:not(.active){opacity:.5}
@@ -193,5 +204,5 @@ input[type=color].prop-color{width:32px;height:24px;padding:1px;border:1px solid
 .history-entry:hover{background:var(--bg-hover);color:var(--text-primary)}
 .history-entry.history-current{color:var(--text-primary);font-weight:600;border-left-color:var(--accent);background:var(--accent-dim);cursor:default}
 .history-entry.history-redo{color:var(--text-muted);font-style:italic}
-.history-icon{font-size:10px;width:14px;text-align:center;flex-shrink:0;color:inherit}
+.history-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:inherit;opacity:.8}
 .history-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

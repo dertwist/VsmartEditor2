@@ -1,7 +1,7 @@
 {
   "name": "vsmart-editor",
   "productName": "VsmartEditor2",
-  "description": "VsmartEditor2 - Electron desktop app",
+  "description": "VsmartEditor 2 is a desktop editor for Vsmart files.",
   "keywords": [],
   "main": "./main.js",
   "version": "0.2.0",

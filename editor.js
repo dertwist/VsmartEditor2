@@ -143,21 +143,21 @@ const COMBO_OPTIONS = {
 };
 
 const ELEMENT_ICONS = {
-  Group:'📁',
-  Model:'<img src="assets/images/assettypes/model_sm.png" alt="Model">',
-  SmartProp:'<img src="assets/images/assettypes/smart_prop_sm.png" alt="SmartProp">',
-  PlaceOnPath:'🛣️',
-  PlaceInSphere:'⚪',
-  PlaceMultiple:'⊞',
-  PickOne:'🎲',
-  FitOnLine:'📏',
-  ModifyState:'🔄',
-  BendDeformer:'🌀',
-  ModelEntity:'📦',
-  PropPhysics:'⚡',
-  PropDynamic:'🎬',
-  MidpointDeformer:'🌀',
-  Layout2DGrid:'⊞'
+  Group:           ICONS.folder,
+  Model:           ICONS.box,
+  SmartProp:       ICONS.sparkles,
+  PlaceOnPath:     ICONS.route,
+  PlaceInSphere:   ICONS.circleDot,
+  PlaceMultiple:   ICONS.grid2x2,
+  PickOne:         ICONS.shuffle,
+  FitOnLine:       ICONS.ruler,
+  ModifyState:     ICONS.refreshCw,
+  BendDeformer:    ICONS.wave,
+  ModelEntity:     ICONS.package,
+  PropPhysics:     ICONS.zap,
+  PropDynamic:     ICONS.playCircle,
+  MidpointDeformer:ICONS.gitCommit,
+  Layout2DGrid:    ICONS.layoutGrid
 };
 
 // ===== UTILITY =====
@@ -178,7 +178,7 @@ function getShortClass(cls) {
 }
 
 function getElementIcon(shortClass) {
-  return ELEMENT_ICONS[shortClass] || '📦';
+  return ELEMENT_ICONS[shortClass] || ICONS.box;
 }
 
 function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
@@ -374,7 +374,7 @@ function renderUndoHistory() {
   function makeEntry(label, index, isCurrent, isRedo) {
     const el = document.createElement('div');
     el.className = 'history-entry' + (isCurrent ? ' history-current' : '') + (isRedo ? ' history-redo' : '');
-    const icon = isCurrent ? '▶' : (isRedo ? '↷' : '↩');
+    const icon = isCurrent ? ICONS.playSolid : (isRedo ? ICONS.rotateCw : ICONS.rotateCcw);
     el.innerHTML = `<span class="history-icon">${icon}</span><span class="history-label">${escHtml(label)}</span>`;
     if (!isCurrent) {
       el.title = isRedo ? 'Redo to this state' : 'Undo to this state';
@@ -410,7 +410,7 @@ function renderTree() {
   const tree = document.getElementById('tree');
   tree.innerHTML = '';
   // Children section
-  const childHeader = createTreeSection('children', '📁', 'Children', doc.m_Children.length);
+  const childHeader = createTreeSection('children', ICONS.layers, 'Children', doc.m_Children.length);
   tree.appendChild(childHeader.row);
   if (expandedNodes.has('children')) {
     doc.m_Children.forEach((child, i) => {
@@ -418,7 +418,7 @@ function renderTree() {
     });
   }
   // Variables section
-  const varHeader = createTreeSection('variables', '📋', 'Variables', doc.m_Variables.length);
+  const varHeader = createTreeSection('variables', ICONS.braces, 'Variables', doc.m_Variables.length);
   tree.appendChild(varHeader.row);
   if (expandedNodes.has('variables')) {
     doc.m_Variables.forEach((v, i) => {
@@ -428,7 +428,7 @@ function renderTree() {
       row.dataset.path = `variables.${i}`;
       row.draggable = true;
       const varType = getShortClass(v._class);
-      row.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon">🔧</span><span class="tree-label">${v.m_VariableName || 'unnamed'}</span><span class="tree-badge" style="background:rgba(137,180,250,.1);color:var(--accent);font-size:9px">${varType}</span>`;
+      row.innerHTML = `<span class="tree-toggle empty">${ICONS.chevronRight}</span><span class="tree-icon">${ICONS.tag}</span><span class="tree-label">${v.m_VariableName || 'unnamed'}</span><span class="tree-badge" style="background:rgba(137,180,250,.1);color:var(--accent);font-size:9px">${varType}</span>`;
       row.addEventListener('click', (e) => { e.stopPropagation(); selectNode(`variables.${i}`); });
       row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showVariableContextMenu(e, `variables.${i}`); });
       setupDragDrop(row, `variables.${i}`);
@@ -444,7 +444,7 @@ function createTreeSection(id, icon, label, count) {
   row.style.fontWeight = '600';
   row.style.color = 'var(--text-secondary)';
   const expanded = expandedNodes.has(id);
-  row.innerHTML = `<span class="tree-toggle ${expanded ? 'expanded' : ''}" data-toggle="${id}">▶</span><span class="tree-icon">${icon}</span><span class="tree-label">${label} (${count})</span>`;
+  row.innerHTML = `<span class="tree-toggle ${expanded ? 'expanded' : ''}" data-toggle="${id}">${ICONS.chevronRight}</span><span class="tree-icon">${icon}</span><span class="tree-label">${label} (${count})</span>`;
   row.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleExpand(id);
@@ -468,7 +468,7 @@ function renderTreeNode(container, node, path, depth) {
   row.style.paddingLeft = (depth * 16 + 8) + 'px';
   row.dataset.path = path;
   row.draggable = true;
-  row.innerHTML = `<span class="tree-toggle ${hasSubItems ? (expanded ? 'expanded' : '') : 'empty'}" data-toggle="${path}">▶</span><span class="tree-icon">${icon}</span><span class="tree-label">${escHtml(label)}</span>${label !== shortClass ? `<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${shortClass}</span>` : ''}`;
+  row.innerHTML = `<span class="tree-toggle ${hasSubItems ? (expanded ? 'expanded' : '') : 'empty'}" data-toggle="${path}">${ICONS.chevronRight}</span><span class="tree-icon">${icon}</span><span class="tree-label">${escHtml(label)}</span>${label !== shortClass ? `<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">${shortClass}</span>` : ''}`;
 
   row.addEventListener('click', (e) => { e.stopPropagation(); selectNode(path); });
   row.querySelector('.tree-toggle').addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(path); });
@@ -488,7 +488,7 @@ function renderTreeNode(container, node, path, depth) {
         modRow.style.paddingLeft = ((depth + 1) * 16 + 8) + 'px';
         modRow.style.color = 'var(--mauve)';
         modRow.style.fontSize = '11px';
-        modRow.innerHTML = `<span class="tree-toggle ${node.m_Modifiers.length > 0 ? (modExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${modSectionId}">▶</span><span class="tree-icon" style="font-size:11px">⚙️</span><span class="tree-label">Modifiers (${node.m_Modifiers.length})</span>`;
+        modRow.innerHTML = `<span class="tree-toggle ${node.m_Modifiers.length > 0 ? (modExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${modSectionId}">${ICONS.chevronRight}</span><span class="tree-icon">${ICONS.sliders}</span><span class="tree-label">Modifiers (${node.m_Modifiers.length})</span>`;
         modRow.addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(modSectionId); });
         modRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showAddModifierMenu(e, path); });
         container.appendChild(modRow);
@@ -501,7 +501,7 @@ function renderTreeNode(container, node, path, depth) {
             mRow.style.paddingLeft = ((depth + 2) * 16 + 8) + 'px';
             mRow.dataset.path = modPath;
             mRow.draggable = true;
-            mRow.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon" style="font-size:11px">⚙️</span><span class="tree-label">${modClass}</span><span class="tree-badge modifier">mod</span>`;
+            mRow.innerHTML = `<span class="tree-toggle empty">${ICONS.chevronRight}</span><span class="tree-icon">${ICONS.wrench}</span><span class="tree-label">${modClass}</span><span class="tree-badge modifier">mod</span>`;
             mRow.addEventListener('click', (e) => { e.stopPropagation(); selectNode(modPath); });
             mRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showModifierContextMenu(e, modPath, path); });
             setupDragDrop(mRow, modPath);
@@ -519,7 +519,7 @@ function renderTreeNode(container, node, path, depth) {
       scRow.style.paddingLeft = ((depth + 1) * 16 + 8) + 'px';
       scRow.style.color = 'var(--yellow)';
       scRow.style.fontSize = '11px';
-      scRow.innerHTML = `<span class="tree-toggle ${node.m_SelectionCriteria.length > 0 ? (scExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${scSectionId}">▶</span><span class="tree-icon" style="font-size:11px">🎯</span><span class="tree-label">Selection Criteria (${node.m_SelectionCriteria.length})</span>`;
+      scRow.innerHTML = `<span class="tree-toggle ${node.m_SelectionCriteria.length > 0 ? (scExpanded ? 'expanded' : '') : 'empty'}" data-toggle="${scSectionId}">${ICONS.chevronRight}</span><span class="tree-icon">${ICONS.filter}</span><span class="tree-label">Selection Criteria (${node.m_SelectionCriteria.length})</span>`;
       scRow.addEventListener('click', (e) => { e.stopPropagation(); toggleExpand(scSectionId); });
       scRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showAddCriteriaMenu(e, path); });
       container.appendChild(scRow);
@@ -532,7 +532,7 @@ function renderTreeNode(container, node, path, depth) {
           sRow.style.paddingLeft = ((depth + 2) * 16 + 8) + 'px';
           sRow.dataset.path = scPath;
           sRow.draggable = true;
-          sRow.innerHTML = `<span class="tree-toggle empty">▶</span><span class="tree-icon" style="font-size:11px">🎯</span><span class="tree-label">${scClass}</span><span class="tree-badge criteria">crit</span>`;
+          sRow.innerHTML = `<span class="tree-toggle empty">${ICONS.chevronRight}</span><span class="tree-icon">${ICONS.target}</span><span class="tree-label">${scClass}</span><span class="tree-badge criteria">crit</span>`;
           sRow.addEventListener('click', (e) => { e.stopPropagation(); selectNode(scPath); });
           sRow.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showModifierContextMenu(e, scPath, path); });
           setupDragDrop(sRow, scPath);
@@ -684,7 +684,7 @@ function showMenu(x, y, items) {
     if (item.header) { const h = document.createElement('div'); h.className = 'ctx-header'; h.textContent = item.header; menu.appendChild(h); return; }
     const el = document.createElement('div');
     el.className = 'ctx-item' + (item.danger ? ' danger' : '');
-    el.innerHTML = `<span>${item.label}</span>${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}`;
+    el.innerHTML = `<span class="ctx-content">${item.icon ? `<span class="ctx-icon">${item.icon}</span>` : '<span class="ctx-icon ctx-icon-placeholder"></span>'}<span class="ctx-label">${item.label}</span></span>${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}`;
     el.addEventListener('click', (e) => { e.stopPropagation(); closeMenus(); item.action(); });
     menu.appendChild(el);
   });
@@ -704,46 +704,46 @@ function showElementContextMenu(e, path) {
   const canHaveChildren = node.m_Children !== undefined;
   const items = [];
   if (canHaveChildren) {
-    items.push({ label: '➕ Add Child Element...', action: () => showElementPicker(e.clientX, e.clientY, (typeName) => { pushUndo('Add Element'); node.m_Children.push(createElement(typeName)); expandedNodes.add(path); renderAll(); }) });
+    items.push({ icon: ICONS.plusSquare, label: 'Add Child Element...', action: () => showElementPicker(e.clientX, e.clientY, (typeName) => { pushUndo('Add Element'); node.m_Children.push(createElement(typeName)); expandedNodes.add(path); renderAll(); }) });
   }
-  items.push({ label: '⚙️ Add Modifier...', action: () => showOperatorPicker(e.clientX, e.clientY, path) });
-  items.push({ label: '🎯 Add Selection Criteria...', action: () => showCriteriaPicker(e.clientX, e.clientY, path) });
+  items.push({ icon: ICONS.wrench,    label: 'Add Modifier...',           action: () => showOperatorPicker(e.clientX, e.clientY, path) });
+  items.push({ icon: ICONS.target,    label: 'Add Selection Criteria...', action: () => showCriteriaPicker(e.clientX, e.clientY, path) });
   items.push('---');
-  items.push({ label: '📋 Copy', shortcut: 'Ctrl+C', action: () => copyNode(path) });
-  items.push({ label: '✂️ Cut', shortcut: 'Ctrl+X', action: () => cutNode(path) });
-  if (clipboard) items.push({ label: '📌 Paste', shortcut: 'Ctrl+V', action: () => pasteNode(path) });
+  items.push({ icon: ICONS.copy,      label: 'Copy',      shortcut: 'Ctrl+C', action: () => copyNode(path) });
+  items.push({ icon: ICONS.scissors,  label: 'Cut',       shortcut: 'Ctrl+X', action: () => cutNode(path) });
+  if (clipboard) items.push({ icon: ICONS.clipboard, label: 'Paste', shortcut: 'Ctrl+V', action: () => pasteNode(path) });
   items.push('---');
-  items.push({ label: '📄 Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) });
-  items.push({ label: '✏️ Rename', action: () => { const row = document.querySelector(`[data-path="${path}"]`); if (row) startRename(path, row); } });
+  items.push({ icon: ICONS.duplicate, label: 'Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) });
+  items.push({ icon: ICONS.pencil,    label: 'Rename',    action: () => { const row = document.querySelector(`[data-path="${path}"]`); if (row) startRename(path, row); } });
   items.push('---');
-  items.push({ label: '⬆️ Move Up', action: () => moveNode(path, -1) });
-  items.push({ label: '⬇️ Move Down', action: () => moveNode(path, 1) });
+  items.push({ icon: ICONS.arrowUp,   label: 'Move Up',   action: () => moveNode(path, -1) });
+  items.push({ icon: ICONS.arrowDown, label: 'Move Down', action: () => moveNode(path, 1) });
   items.push('---');
-  items.push({ label: '🗑️ Delete', shortcut: 'Del', danger: true, action: () => deleteNode(path) });
+  items.push({ icon: ICONS.trash,     label: 'Delete',    shortcut: 'Del', danger: true, action: () => deleteNode(path) });
   showMenu(e.clientX, e.clientY, items);
 }
 
 function showVariableContextMenu(e, path) {
   const items = [
-    { label: '📄 Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) },
+    { icon: ICONS.duplicate, label: 'Duplicate', shortcut: 'Ctrl+D', action: () => duplicateNode(path) },
     '---',
-    { label: '⬆️ Move Up', action: () => moveNode(path, -1) },
-    { label: '⬇️ Move Down', action: () => moveNode(path, 1) },
+    { icon: ICONS.arrowUp,   label: 'Move Up',   action: () => moveNode(path, -1) },
+    { icon: ICONS.arrowDown, label: 'Move Down', action: () => moveNode(path, 1) },
     '---',
-    { label: '🗑️ Delete', shortcut: 'Del', danger: true, action: () => deleteNode(path) }
+    { icon: ICONS.trash,     label: 'Delete',    shortcut: 'Del', danger: true, action: () => deleteNode(path) }
   ];
   showMenu(e.clientX, e.clientY, items);
 }
 
 function showModifierContextMenu(e, modPath, _parentPath) {
   const items = [
-    { label: '📋 Copy', action: () => copyNode(modPath) },
-    { label: '📄 Duplicate', action: () => duplicateNode(modPath) },
+    { icon: ICONS.copy,      label: 'Copy',      action: () => copyNode(modPath) },
+    { icon: ICONS.duplicate, label: 'Duplicate', action: () => duplicateNode(modPath) },
     '---',
-    { label: '⬆️ Move Up', action: () => moveNode(modPath, -1) },
-    { label: '⬇️ Move Down', action: () => moveNode(modPath, 1) },
+    { icon: ICONS.arrowUp,   label: 'Move Up',   action: () => moveNode(modPath, -1) },
+    { icon: ICONS.arrowDown, label: 'Move Down', action: () => moveNode(modPath, 1) },
     '---',
-    { label: '🗑️ Delete', danger: true, action: () => deleteNode(modPath) }
+    { icon: ICONS.trash,     label: 'Delete',    danger: true, action: () => deleteNode(modPath) }
   ];
   showMenu(e.clientX, e.clientY, items);
 }
@@ -776,7 +776,7 @@ function showAddCriteriaMenu(e, parentPath) {
 // ===== ELEMENT/OPERATOR PICKERS =====
 function showElementPicker(x, y, callback) {
   const items = Object.keys(ELEMENT_DEFS).map(name => ({
-    label: `${getElementIcon(name)} ${name}`, action: () => callback(name)
+    icon: getElementIcon(name), label: name, action: () => callback(name)
   }));
   showMenu(x, y, [{ header: 'Add Element' }, ...items]);
 }
@@ -1026,7 +1026,7 @@ function createSection(title, initialOpen, addCallback) {
   const header = document.createElement('div');
   header.className = 'props-section-header';
   let open = initialOpen !== false;
-  header.innerHTML = `<span><span class="toggle ${open ? '' : 'collapsed'}">▾</span> ${escHtml(title)}</span>${addCallback ? '<button class="btn btn-sm btn-icon" style="font-size:14px" title="Add">+</button>' : ''}`;
+  header.innerHTML = `<span><span class="toggle ${open ? '' : 'collapsed'}">${ICONS.chevronDown}</span> ${escHtml(title)}</span>${addCallback ? `<button class="btn btn-sm btn-icon" title="Add">${ICONS.plus}</button>` : ''}`;
   const body = document.createElement('div');
   body.className = 'props-section-body' + (open ? '' : ' collapsed');
   header.querySelector('.toggle').parentElement.addEventListener('click', () => {
@@ -1052,7 +1052,7 @@ function createModifierFrame(mod, index, parentPath, arrayKey) {
   header.className = 'frame-header';
   const isMod = arrayKey === 'm_Modifiers';
   header.style.borderLeft = `3px solid ${isMod ? 'var(--mauve)' : 'var(--yellow)'}`;
-  header.innerHTML = `<span class="frame-toggle ${open ? '' : 'collapsed'}">▾</span><span class="frame-name">${shortClass}</span><span class="frame-actions"><button title="Move Up" onclick="moveModifier('${parentPath}','${arrayKey}',${index},-1)">▴</button><button title="Move Down" onclick="moveModifier('${parentPath}','${arrayKey}',${index},1)">▾</button><button title="Duplicate" onclick="duplicateModifier('${parentPath}','${arrayKey}',${index})">📄</button><button class="del" title="Delete" onclick="deleteModifier('${parentPath}','${arrayKey}',${index})">✕</button></span>`;
+  header.innerHTML = `<span class="frame-toggle ${open ? '' : 'collapsed'}">${ICONS.chevronDown}</span><span class="frame-name">${shortClass}</span><span class="frame-actions"><button title="Move Up" onclick="moveModifier('${parentPath}','${arrayKey}',${index},-1)">${ICONS.arrowUp}</button><button title="Move Down" onclick="moveModifier('${parentPath}','${arrayKey}',${index},1)">${ICONS.arrowDown}</button><button title="Duplicate" onclick="duplicateModifier('${parentPath}','${arrayKey}',${index})">${ICONS.duplicate}</button><button class="del" title="Delete" onclick="deleteModifier('${parentPath}','${arrayKey}',${index})">${ICONS.x}</button></span>`;
 
   const body = document.createElement('div');
   body.className = 'frame-body' + (open ? '' : ' collapsed');
@@ -1649,7 +1649,7 @@ function createPropertyWidget(key, value, onChange, varType, isVariable = false)
           onChange(newList);
         });
         const del = document.createElement('button');
-        del.className = 'btn btn-sm btn-icon btn-danger'; del.textContent = '\u2715';
+        del.className = 'btn btn-sm btn-icon btn-danger'; del.innerHTML = ICONS.x;
         del.addEventListener('click', () => { const newList = deepClone(list); newList.splice(ci,1); onChange(newList); renderProperties(); });
         cr.appendChild(ci2); cr.appendChild(del);
         wrapper.appendChild(cr);
@@ -1672,7 +1672,7 @@ function createPropertyWidget(key, value, onChange, varType, isVariable = false)
         sinp.type = 'text'; sinp.className = 'prop-input'; sinp.value = s;
         sinp.addEventListener('change', () => { const nl = [...list]; nl[si] = sinp.value; onChange(nl); });
         const del = document.createElement('button');
-        del.className = 'btn btn-sm btn-icon btn-danger'; del.textContent = '\u2715';
+        del.className = 'btn btn-sm btn-icon btn-danger'; del.innerHTML = ICONS.x;
         del.addEventListener('click', () => { const nl = [...list]; nl.splice(si,1); onChange(nl); renderProperties(); });
         sr.appendChild(sinp); sr.appendChild(del);
         wrapper.appendChild(sr);
@@ -2159,7 +2159,7 @@ function undockPanel(id) {
   if (btn) {
     btn.onclick = () => redockPanel(id);
     btn.title = 'Dock';
-    btn.textContent = '\u21f2';
+    btn.innerHTML = ICONS.dock;
   }
   // Make draggable
   makeDraggable(panel, panel.querySelector('.dock-handle'));
@@ -2192,7 +2192,7 @@ function redockPanel(id) {
   if (btn) {
     btn.onclick = () => undockPanel(id);
     btn.title = 'Undock';
-    btn.textContent = '\u21f1';
+    btn.innerHTML = ICONS.undock;
   }
   // Remove resize handles if added
   panel.querySelectorAll('.floating-resize-handle').forEach(h => h.remove());
