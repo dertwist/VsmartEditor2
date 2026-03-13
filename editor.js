@@ -143,7 +143,21 @@ const COMBO_OPTIONS = {
 };
 
 const ELEMENT_ICONS = {
-  Group:'📁',Model:'📦',SmartProp:'🔗',PlaceOnPath:'🛣️',PlaceInSphere:'⚪',PlaceMultiple:'⊞',PickOne:'🎲',FitOnLine:'📏',ModifyState:'🔄',BendDeformer:'🌀',ModelEntity:'📦',PropPhysics:'⚡',PropDynamic:'🎬',MidpointDeformer:'🌀',Layout2DGrid:'⊞'
+  Group:'📁',
+  Model:'<img src="assets/images/assettypes/model_sm.png" alt="Model">',
+  SmartProp:'<img src="assets/images/assettypes/smart_prop_sm.png" alt="SmartProp">',
+  PlaceOnPath:'🛣️',
+  PlaceInSphere:'⚪',
+  PlaceMultiple:'⊞',
+  PickOne:'🎲',
+  FitOnLine:'📏',
+  ModifyState:'🔄',
+  BendDeformer:'🌀',
+  ModelEntity:'📦',
+  PropPhysics:'⚡',
+  PropDynamic:'🎬',
+  MidpointDeformer:'🌀',
+  Layout2DGrid:'⊞'
 };
 
 // ===== UTILITY =====
